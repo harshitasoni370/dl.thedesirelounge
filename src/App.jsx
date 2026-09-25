@@ -1363,7 +1363,7 @@ export default function App() {
       packageGrid.removeEventListener("click", onSelect);
       packageGrid.removeEventListener("keydown", onKeyDown);
     };
-  }, [celebrationType, packageModuleState]);
+  }, [celebrationType, packageModuleState, qrContext, searchWithDevice]);
 
   // 1. Data fetching — Redux thunk.
   useEffect(() => {
@@ -1460,7 +1460,7 @@ export default function App() {
     return () => {
       summary?.remove();
     };
-  }, [path, membershipState, location.search, qrContext]);
+  }, [path, membershipState, searchWithDevice, qrContext]);
 
   useEffect(() => {
     if (path !== "/exclusive-offers") return undefined;
