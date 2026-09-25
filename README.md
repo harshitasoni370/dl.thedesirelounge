@@ -1,8 +1,8 @@
-# Hookah Pani Lounge
+# The desire Lounge
 
-Vite + React SPA for Hookah Pani Lounge. All application API requests are managed by Redux Toolkit async thunks. There is no local `api/` proxy folder.
+Vite + React SPA for The desire Lounge. All application API requests are managed by Redux Toolkit async thunks. There is no local `api/` proxy folder.
 
-## API architecture
+## API architecture 
 
 Each feature has a Redux slice under `src/store/slices/`:
 

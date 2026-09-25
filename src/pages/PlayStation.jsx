@@ -24,7 +24,7 @@ export default function Playstation() {
           <p className="lounge-hero__welcome">PlayStation</p>
           <h1 id="ps-hero-heading" className="lounge-hero__title">Game. Compete. Have Fun.</h1>
           <p className="lounge-hero__copy">
-            Book a PS5 session, pick your game, and play with friends while you dine at Hookah Pani Lounge.
+            Book a PS5 session, pick your game, and play with friends while you dine at Desire Sheesha Lounge.
           </p>
           <ul className="bg-hero__perks">
             <li>

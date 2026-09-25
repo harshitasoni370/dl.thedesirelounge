@@ -6954,8 +6954,6 @@ html:has(.lounge-page) {
 
 /* Header — logo left (same as DESIRE SHEESHA LOUNGE) */
 .lounge-header {
-  position: relative;
-  /* z-index: 100; */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6997,8 +6995,6 @@ html:has(.lounge-page) {
 }
 
 .lounge-header__menu {
-  position: relative;
-  z-index: 101;
   width: 40px;
   height: 40px;
   display: grid;
@@ -7441,75 +7437,7 @@ body.lounge-drawer-open {
   background: var(--lounge-gold);
   transform: translateY(-50%) rotate(45deg);
 }
-.offer-package__main {
-  position: relative;
-}
 
-.offer-package__view-more {
-  margin-top: 14px;
-  padding: 8px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 20px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.offer-package__view-more:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.offer-package__children {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.offer-package__child-card {
-  min-height: 150px;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.offer-package__child-card:hover {
-  border-color: rgba(255, 255, 255, 0.55);
-  transform: translateY(-2px);
-}
-
-.offer-package__child-card--selected {
-  border-color: #d4af37;
-  background: rgba(212, 175, 55, 0.12);
-  box-shadow: 0 0 0 1px #d4af37;
-}
-
-.offer-package__child-card h3 {
-  margin: 0 0 8px;
-}
-
-.offer-package__child-price {
-  display: block;
-  margin-top: 14px;
-  font-size: 16px;
-}
-
-@media (max-width: 768px) {
-  .offer-package__children {
-    grid-template-columns: 1fr;
-  }
-}
 .lounge-panel__head .lounge-panel__rule:first-child::after,
 .offer-sheet__banner .lounge-panel__rule:first-child::after {
   right: 0;
@@ -7826,29 +7754,6 @@ a.lounge-highlight:hover {
   height: 22px;
   color: var(--lounge-gold);
   margin-top: 0.1rem;
-}
-.lounge-footer__col:last-child {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-
-  width: fit-content;
-  margin: 0 auto;
-}
-
-.lounge-footer__col:last-child .lounge-footer__icon {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  margin: 0;
-}
-
-.lounge-footer__col:last-child p {
-  margin: 0;
-  width: auto;
-  text-align: left;
 }
 
 .lounge-footer__icon svg {
@@ -9903,22 +9808,6 @@ body.bg-modal-open {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--lounge-gold) !important;
-}
-
-.offer-package__parent-label {
-  margin: 0 0 0.4rem !important;
-  font-size: 0.68rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--lounge-muted) !important;
-  opacity: 0.85;
-}
-
-.offer-package--child {
-  margin-left: 1.5rem;
-  border-left: 2px solid rgba(201, 162, 75, 0.35);
-  padding-left: 0.9rem;
 }
 
 .offer-package a {

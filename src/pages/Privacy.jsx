@@ -31,7 +31,7 @@ export default function Privacy() {
             <p className="offer-sheet__tagline">We respect your privacy.</p>
 
             <p className="offer-sheet__copy offer-sheet__copy--lead">
-              This policy explains how Hookah Pani Lounge collects, uses and protects personal
+              This policy explains how Desire Sheesha Lounge collects, uses and protects personal
               information when you visit our lounge, use the Digital Lounge, connect to guest
               Wi-Fi, reserve a table, join Desire Privilege, or contact us.
             </p>
@@ -40,7 +40,7 @@ export default function Privacy() {
               <section className="legal-doc__block" id="controller">
                 <h2>1. Who is responsible</h2>
                 <p>
-                  HOOKAH PANI LOUNGE is the controller of personal data
+                  DESIRE SHEESHA LOUNGE is the controller of personal data
                   collected through our venue, Digital Lounge, website and WhatsApp.
                 </p>
                 <p>
@@ -112,7 +112,7 @@ export default function Privacy() {
                 </ul>
                 <p>
                   Third-party websites linked from the Digital Lounge (including
-                  <a href="https://hookah-pani.com/" rel="noopener noreferrer">thedesirelounge.com</a>
+                  <a href="https://thedesirelounge.com/" rel="noopener noreferrer">thedesirelounge.com</a>
                   and social profiles) have their own privacy notices.
                 </p>
               </section>
@@ -200,7 +200,7 @@ export default function Privacy() {
               <section className="legal-doc__block" id="contact">
                 <h2>13. Contact</h2>
                 <div className="legal-doc__contact">
-                  <p>For privacy questions or data requests, message the Hookah Pani Lounge team.</p>
+                  <p>For privacy questions or data requests, message the Desire Sheesha Lounge team.</p>
                   <p>
                     WhatsApp / phone:
                     <a href="tel:+971509002202">+971 50 900 2202</a>
@@ -212,7 +212,7 @@ export default function Privacy() {
                   </p>
                   <p>
                     Website:
-                    <a href="https://hookah-pani.com/" rel="noopener noreferrer">thedesirelounge.com</a>
+                    <a href="https://thedesirelounge.com/" rel="noopener noreferrer">thedesirelounge.com</a>
                   </p>
                 </div>
               </section>
@@ -222,7 +222,7 @@ export default function Privacy() {
               </div>
             </div>
 
-            <p className="offer-sheet__brand">Hookah Pani LOUNGE â¢ Deira, Dubai</p>
+            <p className="offer-sheet__brand">DESIRE SHEESHA LOUNGE â¢ Deira, Dubai</p>
           </section>
         </article>
         </main>

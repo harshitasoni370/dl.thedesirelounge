@@ -61,7 +61,7 @@ export default function MakeItYourMoment() {
     <Layout>
       <section className="moment-page">
         <h1>Make It Your Moment</h1>
-        <p>Create your perfect experience at HOOKAH PANI LOUNGE</p>
+        <p>Create your perfect experience at DESIRE SHEESHA LOUNGE</p>
 
         <div className="service-selector">
           {services.map(service => (

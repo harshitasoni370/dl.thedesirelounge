@@ -23,10 +23,10 @@ export default function Home() {
           <!-- Hero -->
         <section className="lounge-hero" aria-labelledby="hero-heading">
           <p className="lounge-hero__welcome hero-anim">Welcome to</p>
-          <h1 id="hero-heading" className="lounge-hero__title hero-anim">HOOKAH<br /><span className="lounge-hero__subbrand">PANI LOUNGE</span></h1>
+          <h1 id="hero-heading" className="lounge-hero__title hero-anim">DESIRE<br /><span className="lounge-hero__subbrand">SHEESHA LOUNGE</span></h1>
           <p className="lounge-hero__subtitle hero-anim">Your Digital Lounge Experience</p>
           <p className="lounge-hero__copy hero-anim">
-            Connect, explore and enjoy everything Hookah Pani Lounge has to offer.
+            Connect, explore and enjoy everything Desire Sheesha Lounge has to offer.
           </p>
 
         </section>
@@ -60,7 +60,7 @@ export default function Home() {
 
           <div className="lounge-services">
             <div className="lounge-services__grid">
-              <a className="lounge-card" href="https://app.hookah-pani.com/categories" rel="noopener noreferrer">
+              <a className="lounge-card" href="https://app.thedesirelounge.com/categories" rel="noopener noreferrer">
                 <span className="lounge-card__icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M4 11h16l-1.2 9.5a1.5 1.5 0 0 1-1.5 1.3H6.7a1.5 1.5 0 0 1-1.5-1.3L4 11z" />
@@ -134,7 +134,7 @@ export default function Home() {
                     <path d="M12 3.2l1.9 4.7 5.1.4-3.9 3.2 1.2 4.9L12 13.9 7.7 16.4l1.2-4.9L5 8.3l5.1-.4L12 3.2z" />
                   </svg>
                 </span>
-                <h2>Hookah Privilege<br />Membership</h2>
+                <h2>Desire Privilege<br />Membership</h2>
                 <p>AED 199/year â 20% off every visit</p>
               </a>
 
@@ -539,7 +539,7 @@ export default function Home() {
                   <path d="M12 3.2l1.9 4.7 5.1.4-3.9 3.2 1.2 4.9L12 13.9 7.7 16.4l1.2-4.9L5 8.3l5.1-.4L12 3.2z" />
                 </svg>
               </span>
-              <strong>Hookah Privilege<br />Membership</strong>
+              <strong>Desire Privilege<br />Membership</strong>
             </a>
           </div>
         </section> -->

@@ -32,7 +32,7 @@ export default function ExclusiveOffers() {
     <Layout>
       <section className="offers-page">
         <h1>Exclusive Offers</h1>
-        <p>Enjoy special deals and exclusive benefits at HOOKAH PANI LOUNGE</p>
+        <p>Enjoy special deals and exclusive benefits at DESIRE SHEESHA LOUNGE</p>
 
         <div className="offers-grid">
           {offers.map(offer => (

@@ -31,7 +31,7 @@ export default function Birthdaycelebrations() {
             <p className="offer-sheet__tagline">Your Day. Your People. Your Celebration.</p>
 
             <p className="offer-sheet__copy offer-sheet__copy--lead">
-              Make birthdays memorable at Hookah pani Lounge with personalized celebrations,
+              Make birthdays memorable at Desire Sheesha Lounge with personalized celebrations,
               entertainment and dining.
             </p>
 
@@ -63,7 +63,7 @@ export default function Birthdaycelebrations() {
               <li>Premium shisha add-on for eligible adult groups.</li>
               <li>PlayStation and board games available with selected packages.</li>
               <li>Complimentary birthday dessert or chocolates, subject to availability.</li>
-              <li>Hookah Pani Lounge-branded digital invitation for WhatsApp sharing.</li>
+              <li>Desire Sheesha Lounge-branded digital invitation for WhatsApp sharing.</li>
             </ul>
 
             <div className="offer-packages">
@@ -102,7 +102,7 @@ export default function Birthdaycelebrations() {
               Book Birthday Package
             </a>
 
-            <p className="offer-sheet__brand">Hookah Pani Lounge â¢ Customer Offers &amp; Packages</p>
+            <p className="offer-sheet__brand">Desire Sheesha Lounge â¢ Customer Offers &amp; Packages</p>
           </section>
         </article>
         </main>

@@ -1,4 +1,4 @@
-const externalBaseUrl = import.meta.env.VITE_WEBSITE_URL || "https://hookah-pani.com";
+const externalBaseUrl = import.meta.env.VITE_WEBSITE_URL || "https://thedesirelounge.com";
 const environment =
   import.meta.env.VITE_APP_ENV || (import.meta.env.MODE === "production" ? "production" : "uat");
 
@@ -58,9 +58,9 @@ export const URLS = {
   },
   app: {
     menu: import.meta.env.VITE_MENU_URL || "/menu",
-    menuApp: import.meta.env.VITE_MENU_APP_URL || "https://app.hookah-pani.com",
+    menuApp: import.meta.env.VITE_MENU_APP_URL || "https://app.thedesirelounge.com",
     categories:
-      import.meta.env.VITE_CATEGORIES_URL || "https://app.hookah-pani.com/categories",
+      import.meta.env.VITE_CATEGORIES_URL || "https://app.thedesirelounge.com/categories",
   },
   website: {
     home: externalBaseUrl,

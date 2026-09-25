@@ -28,7 +28,7 @@ export default function Sundaybrunch() {
               <span className="lounge-panel__rule" aria-hidden="true"></span>
             </header>
 
-            <p className="offer-sheet__tagline">Sunday tastes better at Hookah Pani Lounge.</p>
+            <p className="offer-sheet__tagline">Sunday tastes better at Desire Sheesha Lounge.</p>
 
             <p className="offer-sheet__copy offer-sheet__copy--lead">
               Every Sunday | 12 PM â 5 PM
@@ -71,7 +71,7 @@ export default function Sundaybrunch() {
               before publishing.
             </p>
 
-            <p className="offer-sheet__brand">Hookah Pani Lounge â¢ Customer Offers &amp; Packages</p>
+            <p className="offer-sheet__brand">Desire Sheesha Lounge â¢ Customer Offers &amp; Packages</p>
           </section>
         </article>
         </main>

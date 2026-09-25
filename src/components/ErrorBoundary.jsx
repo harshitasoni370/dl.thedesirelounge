@@ -23,7 +23,7 @@ export default class ErrorBoundary extends React.Component {
     return (
       <div className="lounge-page lounge-error" role="alert">
         <div style={{ padding: "48px 24px", textAlign: "center", color: "#fff" }}>
-          <h1 style={{ fontSize: "20px", marginBottom: "12px" }}>Something went wrong :(</h1>
+          <h1 style={{ fontSize: "20px", marginBottom: "12px" }}>Something went wrong</h1>
           <p style={{ opacity: 0.8, marginBottom: "20px" }}>
             Please refresh the page.
           </p>

@@ -82,6 +82,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[Hookah-lounge] listening on http://localhost:${PORT}`);
-  console.log("[Hookah-lounge] API handling : Redux direct upstream calls");
+  console.log(`[The-desire-lounge] listening on http://localhost:${PORT}`);
+  console.log("[The-desire-lounge] API handling : Redux direct upstream calls");
 });

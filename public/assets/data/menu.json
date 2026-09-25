@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "HOOKAH PANI LOUNGE",
+    "name": "DESIRE SHEESHA LOUNGE",
     "tagline": "Where premium food meets premium shisha.",
     "subtitle": "Sheesha Lounge"
   },
@@ -70,10 +70,10 @@
     },
     {
       "id": "fumes-specials",
-      "name": "Hookah Specials",
+      "name": "Desire Specials",
       "icon": "fumes-specials",
       "description": "Chef signatures",
-      "blurb": "Explore our handcrafted vegetarian & non-vegetarian hookah specials."
+      "blurb": "Explore our handcrafted vegetarian & non-vegetarian Desire specials."
     },
     {
       "id": "hot-beverages",
@@ -124,7 +124,7 @@
     },
     {
       "id": "ff-signature",
-      "name": "Hookah Signature",
+      "name": "Desire Signature",
       "icon": "ff-signature"
     },
     {

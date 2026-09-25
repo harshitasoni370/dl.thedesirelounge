@@ -42,7 +42,7 @@ export default function CorporateBookings() {
     <Layout>
       <section className="corporate-page">
         <h1>Corporate Bookings</h1>
-        <p>Plan your perfect corporate event at HOOKAH PANI LOUNGE</p>
+        <p>Plan your perfect corporate event at DESIRE SHEESHA LOUNGE</p>
 
         <div className="corporate-services">
           <div className="service-card">

@@ -89,7 +89,7 @@ export default function Corporatebookings() {
               Reservation is confirmed with 50% advance payment.
             </p>
 
-            <p className="offer-sheet__brand">Hookah Pani Lounge â¢ Customer Offers &amp; Packages</p>
+            <p className="offer-sheet__brand">Desire Sheesha Lounge â¢ Customer Offers &amp; Packages</p>
           </section>
         </article>
         </main>

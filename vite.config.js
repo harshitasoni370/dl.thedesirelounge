@@ -22,7 +22,7 @@ function buildInfoPlugin(env) {
   const apiBaseUrl = env.VITE_API_BASE_URL;
   const appEnv = env.VITE_APP_ENV || detectEnv(apiBaseUrl);
   return {
-    name: "Hookah-build-info",
+    name: "The-desire-build-info",
     apply: "build",
     generateBundle() {
       this.emitFile({
@@ -49,12 +49,12 @@ function buildInfoPlugin(env) {
 function assertEnv(env) {
   if (!env.VITE_API_BASE_URL) {
     throw new Error(
-      "[Hookah-Pani-lounge] .env me VITE_API_BASE_URL not get.\n" +
+      "[The-desire-lounge] .env me VITE_API_BASE_URL not get.\n" +
         "Fix: cp .env.example .env  — phir usme production ya UAT wali line uncomment karo.",
     );
   }
   if (!/^https?:\/\//i.test(env.VITE_API_BASE_URL)) {
-    throw new Error(`[Hookah-Pani-lounge] VITE_API_BASE_URL valid URL nahi hai: ${env.VITE_API_BASE_URL}`);
+    throw new Error(`[The-desire-lounge] VITE_API_BASE_URL valid URL nahi hai: ${env.VITE_API_BASE_URL}`);
   }
 }
 

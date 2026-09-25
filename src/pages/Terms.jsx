@@ -31,7 +31,7 @@ export default function Terms() {
             <p className="offer-sheet__tagline">House rules for Eat. Chill. Play.</p>
 
             <p className="offer-sheet__copy offer-sheet__copy--lead">
-              These terms apply when you visit Hookah Pani Lounge, use our Digital Lounge,
+              These terms apply when you visit Desire Sheesha Lounge, use our Digital Lounge,
               connect to guest Wi-Fi, reserve a table, or book events, memberships and gaming
               at our 24/7 lounge in Deira, Dubai.
             </p>
@@ -40,7 +40,7 @@ export default function Terms() {
               <section className="legal-doc__block" id="who-we-are">
                 <h2>1. Who we are</h2>
                 <p>
-                  Hookah Pani LOUNGE (âweâ, âusâ, âourâ) is a 24-hour
+                  DESIRE SHEESHA LOUNGE (âweâ, âusâ, âourâ) is a 24-hour
                   destination in Deira, Dubai offering premium lounge dining, multi-cuisine food,
                   live sports, a gaming zone and shisha.
                 </p>
@@ -52,7 +52,7 @@ export default function Terms() {
                 </p>
                 <p>
                   Website:
-                  <a href="https://hookah-pani.com/" rel="noopener noreferrer">thedesirelounge.com</a>.
+                  <a href="https://thedesirelounge.com/" rel="noopener noreferrer">thedesirelounge.com</a>.
                   Digital Lounge: this page and related lounge screens in-venue.
                 </p>
               </section>
@@ -92,7 +92,7 @@ export default function Terms() {
                 <h2>4. Reservations</h2>
                 <p>
                   Tables can be reserved through
-                  <a href="https://hookah-pani.com/#reserve" rel="noopener noreferrer">thedesirelounge.com</a>,
+                  <a href="https://thedesirelounge.com/#reserve" rel="noopener noreferrer">thedesirelounge.com</a>,
                   WhatsApp, or in person. We confirm bookings on WhatsApp at
                   <a href="https://wa.me/971509002202">+971 50 900 2202</a>.
                 </p>
@@ -165,7 +165,7 @@ export default function Terms() {
               </section>
 
               <section className="legal-doc__block" id="membership">
-                <h2>9. Hookah Privilege membership</h2>
+                <h2>9. Desire Privilege membership</h2>
                 <p>
                   Annual membership is currently offered at AED 199 per year, with member benefits
                   such as 20% off eligible dine-in food, beverages and shisha, plus priority
@@ -181,7 +181,7 @@ export default function Terms() {
               <section className="legal-doc__block" id="conduct">
                 <h2>10. Guest conduct &amp; venue rules</h2>
                 <p>
-                  We want Hookah Pani Lounge to feel welcoming at any hour. Please respect staff,
+                  We want Desire Sheesha Lounge to feel welcoming at any hour. Please respect staff,
                   other guests and the space.
                 </p>
                 <ul>
@@ -211,7 +211,7 @@ export default function Terms() {
               <section className="legal-doc__block" id="ip">
                 <h2>12. Intellectual property</h2>
                 <p>
-                  The Hookah Pani Lounge name, logo, menu design, Digital Lounge content,
+                  The Desire Sheesha Lounge name, logo, menu design, Digital Lounge content,
                   photographs and branding are owned by us or our licensors. You may not copy or
                   reuse them for commercial purposes without written permission.
                 </p>
@@ -242,7 +242,7 @@ export default function Terms() {
                   </p>
                   <p>
                     Website:
-                    <a href="https://hookah-pani.com/" rel="noopener noreferrer">thedesirelounge.com</a>
+                    <a href="https://thedesirelounge.com/" rel="noopener noreferrer">thedesirelounge.com</a>
                   </p>
                 </div>
               </section>
@@ -252,7 +252,7 @@ export default function Terms() {
               </div>
             </div>
 
-            <p className="offer-sheet__brand">Hookah Pani LOUNGE â¢ Deira, Dubai</p>
+            <p className="offer-sheet__brand">DESIRE SHEESHA LOUNGE â¢ Deira, Dubai</p>
           </section>
         </article>
         </main>

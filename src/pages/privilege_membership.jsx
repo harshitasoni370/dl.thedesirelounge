@@ -24,7 +24,7 @@ export default function Privilegemembership() {
           <section className="offer-sheet__panel" aria-labelledby="privilege-title">
             <header className="offer-sheet__banner">
               <span className="lounge-panel__rule" aria-hidden="true"></span>
-              <h1 id="privilege-title">Hookah Privilege Membership</h1>
+              <h1 id="privilege-title">Desire Privilege Membership</h1>
               <span className="lounge-panel__rule" aria-hidden="true"></span>
             </header>
 
@@ -62,7 +62,7 @@ export default function Privilegemembership() {
               Final exclusions and redemption rules should be approved before launch.
             </p>
 
-            <p className="offer-sheet__brand">Hookah Pani Lounge â¢ Customer Offers &amp; Packages</p>
+            <p className="offer-sheet__brand">Desire Sheesha Lounge â¢ Customer Offers &amp; Packages</p>
           </section>
         </article>
         </main>

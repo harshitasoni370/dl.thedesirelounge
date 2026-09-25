@@ -29,7 +29,7 @@ export default function BirthdayCelebrations() {
     <Layout>
       <section className="birthday-page">
         <h1>Birthday Celebrations</h1>
-        <p>Make your special day unforgettable at HOOKAH PANI LOUNGE</p>
+        <p>Make your special day unforgettable at DESIRE SHEESHA LOUNGE</p>
 
         <div className="celebration-features">
           <div className="feature">
