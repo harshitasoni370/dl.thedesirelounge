@@ -48,11 +48,11 @@ export async function fetchCustomMoments(context = {}, { signal } = {}) {
     branchId = DEFAULT_CUSTOM_MOMENT_CONTEXT.branchId,
     search = "",
     typeId = DEFAULT_CUSTOM_MOMENT_CONTEXT.typeId,
-    tableSessionId = DEFAULT_CUSTOM_MOMENT_CONTEXT.tableSessionId,
+    tableSessionId = "",
   } = context;
 
   const params = { companyId, branchId, search, typeId };
-  const headers = { "Table-Session-Id": tableSessionId };
+  const headers = tableSessionId ? { "Table-Session-Id": tableSessionId } : {};
 
   let payload;
   try {

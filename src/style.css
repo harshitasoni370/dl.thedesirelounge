@@ -9721,6 +9721,75 @@ body.bg-modal-open {
   gap: 0.55rem;
 }
 
+.offer-package__main {
+  position: relative;
+}
+
+.offer-package__view-more {
+  margin-top: 14px;
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.offer-package__view-more:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.offer-package__children {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.offer-package__child-card {
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.offer-package__child-card:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  transform: translateY(-2px);
+}
+
+.offer-package__child-card--selected {
+  border-color: #d4af37;
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: 0 0 0 1px #d4af37;
+}
+
+.offer-package__child-card h3 {
+  margin: 0 0 8px;
+}
+
+.offer-package__child-price {
+  display: block;
+  margin-top: 14px;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .offer-package__children {
+    grid-template-columns: 1fr;
+  }
+}
 .offer-sheet__benefits li {
   position: relative;
   margin: 0;

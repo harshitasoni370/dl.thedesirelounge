@@ -48,7 +48,7 @@ function normalizePath(path) {
 
 function buildMenuUrl(search, qrContext, pathname = "/", deviceId) {
   const inParams = new URLSearchParams(search);
-  const data = qrContext?.data || {};
+  const data = getActiveQrData(search, qrContext);
   const out = new URLSearchParams();
 
   const pick = ["companyId", "branchId", "tableId", "moduleId", "sessionId", "tableSessionId"];
@@ -127,6 +127,16 @@ function resolveParam(search, key) {
     if (v !== null && v !== undefined) return v;
   }
   return null;
+}
+
+function isQrEntry(search) {
+  const params = new URLSearchParams(search);
+  return ["type", "location", "name", "resturant", "restaurant", "tableId", "sessionId", "tableSessionId"]
+    .some((key) => Boolean(params.get(key)));
+}
+
+function getActiveQrData(search, qrContext) {
+  return isQrEntry(search) ? qrContext?.data || {} : {};
 }
 
 function getExtraDetails(search) {
@@ -218,6 +228,7 @@ function buildMomentMenuUrl(search, qrContext, moment, context, deviceId, return
 
 function buildPackageMenuUrl(search, qrContext, packageDetails, deviceId, returningCustomer) {
   const context = getRequestContext(search, qrContext);
+  const preserveTableContext = isQrEntry(search);
   const price = String(packageDetails.price || "").match(/[\d.]+/)?.[0] || "";
   const extraDetails = {
     id: packageDetails.id || null,
@@ -228,9 +239,9 @@ function buildPackageMenuUrl(search, qrContext, packageDetails, deviceId, return
   const out = new URLSearchParams();
   const companyId = packageDetails.companyId || context.companyId;
   const branchId = packageDetails.branchId || context.branchId;
-  const rawTableId = packageDetails.tableId || context.tableId;
-  const tableSessionId = packageDetails.tableSessionId || context.tableSessionId;
-  const tableNumber = packageDetails.tableNumber || context.tableNumber;
+  const rawTableId = preserveTableContext ? packageDetails.tableId || context.tableId : "";
+  const tableSessionId = preserveTableContext ? packageDetails.tableSessionId || context.tableSessionId : "";
+  const tableNumber = preserveTableContext ? packageDetails.tableNumber || context.tableNumber : "";
   if (companyId) out.set("cid", companyId);
   if (branchId) out.set("bid", branchId);
   if (isGuid(rawTableId)) out.set("tid", rawTableId);
@@ -311,7 +322,7 @@ function hasMatchingParams(search, contextParams) {
 }
 
 function getGameContext(search, qrContext) {
-  const data = qrContext?.data || {};
+  const data = getActiveQrData(search, qrContext);
   const companyId =
     data.companyId ||
     resolveParam(search, "companyId") ||
@@ -325,7 +336,7 @@ function getGameContext(search, qrContext) {
 
 function getRequestContext(search, qrContext) {
   const context = getGameContext(search, qrContext) || DEFAULT_CONTEXT;
-  const data = qrContext?.data || {};
+  const data = getActiveQrData(search, qrContext);
   return {
     ...context,
     tableId: data.tableId || resolveParam(search, "tableId") || "",
@@ -349,7 +360,7 @@ function getRequestContext(search, qrContext) {
 }
 
 function getCustomMomentContext(search, qrContext) {
-  const data = qrContext?.data || {};
+  const data = getActiveQrData(search, qrContext);
   return {
     companyId: data.companyId || resolveParam(search, "companyId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.companyId,
     branchId: data.branchId || resolveParam(search, "branchId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.branchId,
@@ -360,7 +371,7 @@ function getCustomMomentContext(search, qrContext) {
       data.sessionId ||
       resolveParam(search, "tableSessionId") ||
       resolveParam(search, "sessionId") ||
-      DEFAULT_CUSTOM_MOMENT_CONTEXT.tableSessionId,
+      "",
     tableId:
       data.tableId ||
       resolveParam(search, "tableId") ||

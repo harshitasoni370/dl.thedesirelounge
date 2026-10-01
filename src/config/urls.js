@@ -7,9 +7,12 @@ const environment =
  * API calls Redux thunks se isi configured base URL par jaati hain; same-origin
  * server-side API route ki zaroorat nahi hai.
  */
-const UPSTREAM_BASE = (
+const CONFIGURED_API_BASE = (
   import.meta.env.VITE_API_BASE_URL || "https://restaurents-api.cylsys.com/api"
 ).replace(/\/+$/, "");
+const UPSTREAM_BASE = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_PROXY_BASE || "/api").replace(/\/+$/, "")
+  : CONFIGURED_API_BASE;
 
 export const API = {
   upstreamBase: UPSTREAM_BASE,

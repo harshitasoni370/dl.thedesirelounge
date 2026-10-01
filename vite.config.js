@@ -85,7 +85,18 @@ export default defineConfig(({ command, mode }) => {
         },
       },
     },
-    server: { port: 5173, strictPort: false },
+    server: {
+      port: 5173,
+      strictPort: false,
+      proxy: {
+        [env.VITE_API_PROXY_BASE || "/api"]: {
+          target: env.VITE_API_BASE_URL,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(new RegExp(`^${env.VITE_API_PROXY_BASE || "/api"}`), ""),
+        },
+      },
+    },
     preview: { port: 4173 },
   };
 });

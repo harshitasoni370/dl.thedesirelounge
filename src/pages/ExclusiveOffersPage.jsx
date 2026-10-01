@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { selectQrContext } from "../store/slices/qrContextSlice";
+import { useSelector, useDispatch } from "react-redux";
+import { selectQrContext, selectDeviceId } from "../store/slices/qrContextSlice";
+import { selectPackageModule, fetchPackageModuleItems } from "../store/slices/packageSlice";
+import { MODULE_IDS } from "../config/urls";
+import { useEffect } from "react";
 
-const offers = [
+const staticOffers = [
   {
     name: "Ladies Exclusive - Complimentary Shisha",
     meta: "A little something special, just for her.",
@@ -30,6 +33,97 @@ const offers = [
   { name: "Review & Follow - A Little Thank-You From Us", description: "Share your honest Google feedback, follow us on Instagram and TikTok, or explore our online ordering platforms. Complimentary chocolates may be offered subject to availability." },
 ];
 
+function buildOffersFromPackages(packages) {
+  if (!packages || !packages.length) return [];
+
+  return packages.map((pkg) => {
+    const children = Array.isArray(pkg.children)
+      ? pkg.children.map((child) => ({
+          uidPackageItemId:
+            child.uidPackageId || child.uidPackageItemId,
+
+          uidParentPackageItemId:
+            child.uidParentPackageItemId,
+
+          uidHeaderModuleId:
+            child.moduleId || child.uidHeaderModuleId,
+
+          name: child.name,
+
+          meta: child.timing || child.subtitle,
+
+          timing: child.timing,
+
+          description: child.description,
+
+          details: child.inclusions || [],
+
+          terms: child.terms || [],
+
+          priceLabel:
+            child.priceLabel || child.strPriceLabel,
+
+          price:
+            child.price ?? child.decPrice,
+
+          uidPackageId:
+            child.uidPackageId || child.uidPackageItemId,
+
+          moduleId:
+            child.moduleId || child.uidHeaderModuleId,
+
+          imageUrl: child.imageUrl,
+
+          isParent: false,
+        }))
+      : [];
+
+    return {
+      uidPackageItemId:
+        pkg.uidPackageId || pkg.uidPackageItemId,
+
+      uidParentPackageItemId:
+        pkg.uidParentPackageItemId,
+
+      uidHeaderModuleId:
+        pkg.moduleId || pkg.uidHeaderModuleId,
+
+      name: pkg.name,
+
+      meta: pkg.timing || pkg.subtitle,
+
+      timing: pkg.timing,
+
+      description: pkg.description,
+
+      featured:
+        pkg.featured || children.length > 0,
+
+      details: pkg.inclusions || [],
+
+      terms: pkg.terms || [],
+
+      priceLabel:
+        pkg.priceLabel || pkg.strPriceLabel,
+
+      price:
+        pkg.price ?? pkg.decPrice,
+
+      uidPackageId:
+        pkg.uidPackageId || pkg.uidPackageItemId,
+
+      moduleId:
+        pkg.moduleId || pkg.uidHeaderModuleId,
+
+      imageUrl: pkg.imageUrl,
+
+      isParent: children.length > 0,
+
+      children,
+    };
+  });
+}
+
 function getContext(search, qrContext) {
   const params = new URLSearchParams(search);
   const data = qrContext?.data || {};
@@ -40,45 +134,133 @@ function getContext(search, qrContext) {
     tableSessionId: data.tableSessionId || data.sessionId || params.get("tableSessionId") || params.get("sessionId") || "",
     tableId: data.tableId || params.get("tableId") || "",
     tableNumber: data.tableNumber || data.tableNo || params.get("tableNumber") || params.get("tableNo") || params.get("name") || "",
-    moduleId: data.moduleId || params.get("moduleId") || "3e340f23-d842-47f0-98e8-b0d458dc22dd",
+    moduleId: data.moduleId || params.get("moduleId") || MODULE_IDS.exclusiveOffers,
   };
 }
 
 export default function ExclusiveOffersPage() {
   const location = useLocation();
+  const dispatch = useDispatch();
   const qrContext = useSelector(selectQrContext);
+  const deviceId = useSelector(selectDeviceId);
+  const packageModuleState = useSelector(selectPackageModule);
   const [selected, setSelected] = useState(null);
+  const [expandedOffers, setExpandedOffers] = useState({});
+  
   const context = getContext(location.search, qrContext);
 
+  const searchWithDevice = (() => {
+    const params = new URLSearchParams(location.search);
+    if (deviceId) params.set("deviceId", deviceId);
+    return `?${params.toString()}`;
+  })();
+
+  useEffect(() => {
+    const urlModuleId = new URLSearchParams(location.search).get("moduleId");
+    dispatch(
+      fetchPackageModuleItems({
+        search: searchWithDevice,
+        qrContext,
+        overrides: { moduleId: urlModuleId || MODULE_IDS.exclusiveOffers },
+      }),
+    );
+  }, [location.search, searchWithDevice, qrContext, dispatch]);
+
+  const dynamicOffers = buildOffersFromPackages(packageModuleState?.items);
+  const offers = dynamicOffers.length > 0 ? dynamicOffers : staticOffers;
+
+  const isLoading = packageModuleState?.status === "loading" || packageModuleState?.status === "idle";
+
   const checkout = () => {
-    if (selected === null) return;
-    const offer = offers[selected];
-    const price = offer.name.match(/AED\s*[\d.]+|\d+%|Complimentary/i)?.[0] || "";
-    const details = { id: offer.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name: offer.name, price, description: offer.description, type: "exclusive-offer" };
+  if (!selected) return;
+
+  const offer = selected;
+
+
+  const price =
+    offer.priceLabel ||
+    String(offer.price || "") ||
+    offer.name.match(
+      /AED\s*[\d.]+|\d+%|Complimentary/i
+    )?.[0] ||
+    "";
+
+    const priceNumber = String(price).replace(/[^\d.]/g, "");
+
+    const details = {
+      id:
+        offer.uidPackageId ||
+        offer.uidPackageItemId ||
+        offer.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-"),
+
+      name: offer.name,
+
+      price,
+
+      description: offer.description,
+
+      type: "exclusive-offer",
+
+      moduleId: offer.moduleId || context.moduleId,
+    };
+
     const params = new URLSearchParams({
       companyId: context.companyId,
       branchId: context.branchId,
       sessionId: context.sessionId,
       tableSessionId: context.tableSessionId,
-      ...(context.tableId ? { tableId: context.tableId } : {}),
-      ...(context.tableNumber ? { tableNumber: context.tableNumber } : {}),
+
+      ...(context.tableId
+        ? { tableId: context.tableId }
+        : {}),
+
+      ...(context.tableNumber
+        ? { tableNumber: context.tableNumber }
+        : {}),
+
+      ...(deviceId
+        ? { deviceId }
+        : {}),
+
       categoryName: "Exclusive Offers",
       category: "EXCLUSIVE_OFFER",
       reservationCategory: "EXCLUSIVE_OFFER",
+
       eventName: offer.name,
+
       offerId: details.id,
+
       offerName: offer.name,
-      offerDescription: offer.description,
+
+      offerDescription:
+        offer.description || "",
+
       offerPrice: price,
+
       bookingType: "Exclusive Offer",
+
       reservationTitle: offer.name,
-      price: price.replace(/[^\d.]/g, ""),
+
+      ...(priceNumber
+        ? { price: priceNumber }
+        : {}),
+
+      moduleId: details.moduleId || "",
+
       extraDetails: JSON.stringify(details),
+
       step: "about-you",
+
       hideSteps: "true",
+
       hideCardIcon: "true",
     });
-    window.location.assign(`https://app.thedesirelounge.com/checkout?${params}`);
+
+    window.location.assign(
+      `https://app.thedesirelounge.com/checkout?${params}`
+    );
   };
 
   return (
@@ -87,9 +269,9 @@ export default function ExclusiveOffersPage() {
       <div className="lounge-bg" aria-hidden="true"><div className="lounge-bg__image" style={{ backgroundImage: "url('/assets/images/index-hero-bg.webp')" }} /><div className="lounge-bg__overlay" /></div>
       <div className="lounge-shell bg-games-shell" id="app">
         <header className="lounge-header">
-          <a href="/" className="logo lounge-header__logo" aria-label="DESIRE SHEESHA LOUNGE home">
-            <img src="https://restaurents-api.cylsys.com/Assets/theDesireLounge/Image/Logo/logo.webp" alt="" className="logo__mark" width="48" height="48" />
-            <span className="logo__copy"><span className="logo__text">DESIRE</span><span className="logo__tag">SHEESHA LOUNGE</span></span>
+          <a href="/" className="logo lounge-header__logo" aria-label="THE DESIRE LOUNGE home">
+            <img src="https://restaurents-api.cylsys.com/Assets/thedesirelounge/Image/Logo/logo.webp" alt="" className="logo__mark" width="48" height="48" />
+            <span className="logo__copy"><span className="logo__text">THE DESIRE LOUNGE</span></span>
           </a>
           <div className="lounge-header__actions">
             <a href="/#services" className="bg-games-back" aria-label="Back to Digital Lounge"><span>Lounge</span></a>
@@ -100,16 +282,207 @@ export default function ExclusiveOffersPage() {
           <article className="offer-sheet"><section className="offer-sheet__panel" aria-labelledby="offers-title">
             <header className="offer-sheet__banner"><span className="lounge-panel__rule" /><h1 id="offers-title">Exclusive Offers</h1><span className="lounge-panel__rule" /></header>
             <p className="offer-sheet__tagline">More Reasons to Visit. More Reasons to Stay.</p>
-            <div className="offer-packages">
-              {offers.map((offer, index) => <article key={offer.name} className={`offer-package${offer.featured ? " offer-package--featured" : ""}${selected === index ? " is-selected" : ""}`} role="button" tabIndex="0" aria-pressed={selected === index} onClick={() => setSelected(index)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(index); } }}>
-                <h2>{offer.name}</h2>
-                {offer.meta && <p className="offer-package__meta">{offer.meta}</p>}
-                <p>{offer.description}</p>
-                {offer.details && <><h3 className="offer-package__subheading">What's Included</h3><ul className="offer-sheet__benefits">{offer.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><h3 className="offer-package__subheading">Offer Terms</h3><ul className="offer-sheet__benefits"><li>Offer is non-transferable and cannot be exchanged for cash or another product.</li><li>Cannot be combined with another promotion unless management permits it.</li><li>Offer is subject to availability and applicable UAE legal age requirements.</li><li>Management reserves the right to amend or withdraw the offer.</li></ul></>}
-              </article>)}
-            </div>
-            <button type="button" className="offer-sheet__cta" disabled={selected === null} onClick={checkout}>{selected === null ? "Select an offer first" : `Book ${offers[selected].name}`}</button>
-            <p className="offer-sheet__brand">Desire Sheesha Lounge - Customer Offers &amp; Packages</p>
+            {isLoading && dynamicOffers.length === 0 ? (
+              <p className="bg-loading">Loading offers...</p>
+            ) : (
+              <>
+             <div className="offer-packages">
+  {offers.map((offer, index) => {
+    const offerKey =
+      offer.uidPackageItemId ||
+      offer.uidPackageId ||
+      offer.name;
+
+    const isExpanded = !!expandedOffers[offerKey];
+
+    const hasChildren =
+      Array.isArray(offer.children) &&
+      offer.children.length > 0;
+
+    const isSelected =
+  selected?.uidPackageItemId === offer.uidPackageItemId;
+
+    return (
+     <article
+  key={offerKey}
+  className={`offer-package${
+    offer.featured || offer.isParent
+      ? " offer-package--featured"
+      : ""
+  }${isSelected ? " is-selected" : ""}`}
+  onClick={() => {
+    if (hasChildren) return;
+    setSelected(offer);
+  }}
+>
+        {/* MAIN OFFER CARD */}
+        <div className="offer-package__main">
+          <h2>
+            {offer.name}
+            {offer.priceLabel
+              ? ` — ${offer.priceLabel}`
+              : ""}
+          </h2>
+
+          {offer.timing && (
+            <p className="offer-package__meta">
+              {offer.timing}
+            </p>
+          )}
+
+          {!offer.timing && offer.meta && (
+            <p className="offer-package__meta">
+              {offer.meta}
+            </p>
+          )}
+
+          {offer.description && (
+            <p>{offer.description}</p>
+          )}
+
+          {/* VIEW MORE */}
+          {hasChildren && (
+            <button
+              type="button"
+              className="offer-package__view-more"
+              onClick={() =>
+                setExpandedOffers((prev) => ({
+                  ...prev,
+                  [offerKey]: !prev[offerKey],
+                }))
+              }
+            >
+              {isExpanded ? "View Less" : "View More"}
+            </button>
+          )}
+        </div>
+
+        {/* CHILD CARDS */}
+        {hasChildren && isExpanded && (
+          <div className="offer-package__children">
+            {offer.children.map((child) => {
+              // const childIndex = offers.findIndex(
+              //   (item) =>
+              //     item.uidPackageItemId ===
+              //     child.uidPackageItemId
+              // );
+
+              const childSelected =
+  selected?.uidPackageItemId === child.uidPackageItemId;
+
+              return (
+                <div
+                  key={
+                    child.uidPackageItemId ||
+                    child.uidPackageId ||
+                    child.name
+                  }
+                  className={`offer-package__child-card${
+                    childSelected
+                      ? " offer-package__child-card--selected"
+                      : ""
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                onClick={(event) => {
+  event.stopPropagation();
+  setSelected(child);
+}}
+               onKeyDown={(event) => {
+  if (
+    event.key === "Enter" ||
+    event.key === " "
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    // setSelected(childIndex);
+  }
+}}
+                >
+                  <div>
+                    <h3>{child.name}</h3>
+
+                    {child.timing && (
+                      <p className="offer-package__meta">
+                        {child.timing}
+                      </p>
+                    )}
+
+                    {child.description && (
+                      <p>{child.description}</p>
+                    )}
+                  </div>
+
+                  {child.priceLabel && (
+                    <strong className="offer-package__child-price">
+                      {child.priceLabel}
+                    </strong>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* NORMAL OFFER DETAILS */}
+        {!hasChildren && (
+          <>
+            {offer.details &&
+              offer.details.length > 0 && (
+                <>
+                  <h3 className="offer-package__subheading">
+                    What's Included
+                  </h3>
+
+                  <ul className="offer-sheet__benefits">
+                    {offer.details.map(
+                      (detail, i) => (
+                        <li key={i}>
+                          {detail}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </>
+              )}
+
+            {offer.terms &&
+              offer.terms.length > 0 && (
+                <>
+                  <h3 className="offer-package__subheading">
+                    Offer Terms
+                  </h3>
+
+                  <ul className="offer-sheet__benefits">
+                    {offer.terms.map(
+                      (term, i) => (
+                        <li key={i}>
+                          {term}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </>
+              )}
+          </>
+        )}
+      </article>
+    );
+  })}
+</div>
+             <button
+  type="button"
+  className="offer-sheet__cta"
+  disabled={!selected}
+  onClick={checkout}
+>
+  {!selected
+    ? "Select an offer first"
+    : `Book ${selected.name}`}
+</button>
+              </>
+            )}
+            <p className="offer-sheet__brand">The Desire Lounge - Customer Offers &amp; Packages</p>
           </section></article>
         </main>
       </div>
