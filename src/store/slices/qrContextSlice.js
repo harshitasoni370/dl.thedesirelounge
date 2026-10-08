@@ -45,6 +45,83 @@ function flattenQrData(raw) {
   return nested ? { ...raw, ...nested } : raw;
 }
 
+function generateTableSessionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `qr-session-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function getQrSessionStorageKey(data, params) {
+  const identity = [
+    readCompanyId(data, params),
+    pickValue(data, ["branchId"]),
+    pickValue(data, ["tableId"]),
+    pickValue(params, ["branchId"]),
+    pickValue(params, ["tableId"]),
+  ]
+    .filter(Boolean)
+    .join(":");
+
+  return identity ? `desire_qr_session:${identity}` : "desire_qr_session:default";
+}
+
+function ensureQrSessionId(data, params) {
+  const dataCompanyId = pickValue(data, ["companyId", "companyID", "uidCompanyId", "CompanyId"]);
+  const paramsCompanyId = pickValue(params, ["companyId", "companyID", "uidCompanyId", "cid"]);
+  const dataBranchId = pickValue(data, ["branchId"]);
+  const paramsBranchId = pickValue(params, ["branchId"]);
+  const dataTableId = pickValue(data, ["tableId"]);
+  const paramsTableId = pickValue(params, ["tableId"]);
+
+  const matchesQrIdentity =
+    (!dataCompanyId || !paramsCompanyId || dataCompanyId === paramsCompanyId) &&
+    (!dataBranchId || !paramsBranchId || dataBranchId === paramsBranchId) &&
+    (!dataTableId || !paramsTableId || dataTableId === paramsTableId);
+
+  const existing =
+    pickValue(params, ["tableSessionId", "sessionId", "tableSessionID", "sessionID"]) ||
+    (matchesQrIdentity ? pickValue(data, ["tableSessionId", "sessionId", "tableSessionID", "sessionID"]) : "");
+
+  if (existing) {
+    params.sessionId = params.sessionId || existing;
+    params.tableSessionId = params.tableSessionId || existing;
+    if (data && typeof data === "object") {
+      data.sessionId = data.sessionId || existing;
+      data.tableSessionId = data.tableSessionId || existing;
+    }
+    return existing;
+  }
+
+  const storageKey = getQrSessionStorageKey(data, params);
+  let nextSessionId = null;
+
+  try {
+    nextSessionId = sessionStorage.getItem(storageKey) || sessionStorage.getItem("desire_qr_session:default");
+  } catch {
+    // ignore storage restrictions
+  }
+
+  if (!nextSessionId) {
+    nextSessionId = generateTableSessionId();
+  }
+
+  try {
+    sessionStorage.setItem(storageKey, nextSessionId);
+  } catch {
+    // ignore storage restrictions
+  }
+
+  params.sessionId = params.sessionId || nextSessionId;
+  params.tableSessionId = params.tableSessionId || nextSessionId;
+  if (data && typeof data === "object") {
+    data.sessionId = data.sessionId || nextSessionId;
+    data.tableSessionId = data.tableSessionId || nextSessionId;
+  }
+
+  return nextSessionId;
+}
+
 function readCompanyId(data, params) {
   return (
     pickValue(data, ["companyId", "companyID", "uidCompanyId", "CompanyId"]) ||
@@ -72,15 +149,19 @@ export const fetchQrContext = createAsyncThunk(
   async (search, { signal, rejectWithValue, dispatch, getState }) => {
     const searchParams = new URLSearchParams(search);
     const params = expandShortParams(Object.fromEntries(searchParams.entries()));
+    const hasQrContext = QR_CONTEXT_PARAMS.some((key) => key !== "deviceId" && params[key]);
 
     const deviceId = params.deviceId || (await getOrCreateDeviceId(search));
     if (!params.deviceId) params.deviceId = deviceId;
 
     dispatch(setDeviceId(deviceId));
 
-    if (!QR_CONTEXT_PARAMS.some((key) => key !== "deviceId" && params[key])) {
-      return { params, data: getState().qrContext.context?.data || null, fetchedAt: null, deviceId };
+    if (!hasQrContext) {
+      const currentData = getState().qrContext.context?.data || null;
+      return { params, data: currentData, fetchedAt: null, deviceId };
     }
+
+    ensureQrSessionId(getState().qrContext.context?.data || {}, params);
 
     publishContext({ params, data: null, fetchedAt: null, deviceId });
 
