@@ -25,6 +25,13 @@ export async function fetchQrContextApi(
   });
 }
 
+export async function fetchWebsiteByDomainApi(domain, { signal } = {}) {
+  return apiRequest(API.upstream.websiteByDomain, {
+    params: { domain },
+    signal,
+  });
+}
+
 export async function checkDeviceApi(
   { deviceId, companyId },
   { signal } = {}

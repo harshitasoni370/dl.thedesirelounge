@@ -2,11 +2,6 @@ import { apiRequest } from "./apiClient";
 import { API } from "../config/urls";
 import { getImageUrl } from "./imageUrl";
 
-const DEFAULT_CONTEXT = {
-  companyId: "0ffbe39e-abf8-4827-9107-1a04b39f3416",
-  branchId: "f4fb1d76-83a0-4965-86b5-63da28249dae",
-};
-
 function unwrapGames(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
@@ -56,14 +51,12 @@ export function normalizeGames(payload) {
 }
 
 export async function fetchGames(type, context = {}, { signal } = {}) {
-  const companyId = context.companyId || DEFAULT_CONTEXT.companyId;
-  const branchId = context.branchId || DEFAULT_CONTEXT.branchId;
   const directUrl = type === "playstation" ? API.upstream.playstationGames : API.upstream.boardGames;
 
   let payload;
   try {
     payload = await apiRequest(directUrl, {
-      params: { type, companyId, branchId },
+      params: { type, companyId: context.companyId, branchId: context.branchId },
       signal,
     });
   } catch (error) {
@@ -80,4 +73,3 @@ export async function fetchGames(type, context = {}, { signal } = {}) {
   return normalizeGames(payload);
 }
 
-export { DEFAULT_CONTEXT };

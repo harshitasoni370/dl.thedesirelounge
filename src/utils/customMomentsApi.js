@@ -1,14 +1,6 @@
 import { ApiError, apiRequest } from "./apiClient";
 import { API } from "../config/urls";
 
-export const DEFAULT_CUSTOM_MOMENT_CONTEXT = {
-  companyId: "0ffbe39e-abf8-4827-9107-1a04b39f3416",
-  branchId: "f4fb1d76-83a0-4965-86b5-63da28249dae",
-  typeId: "0880be65-3086-4edf-ad56-877b5e5c97f7",
-  tableSessionId: "ee81986f-feac-483d-bebc-adcf8422ff26",
-  moduleId: "3e340f23-d842-47f0-98e8-b0d458dc22dd",
-};
-
 function unwrapMoments(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
@@ -44,10 +36,10 @@ export function normalizeCustomMoments(payload) {
 
 export async function fetchCustomMoments(context = {}, { signal } = {}) {
   const {
-    companyId = DEFAULT_CUSTOM_MOMENT_CONTEXT.companyId,
-    branchId = DEFAULT_CUSTOM_MOMENT_CONTEXT.branchId,
+    companyId,
+    branchId,
     search = "",
-    typeId = DEFAULT_CUSTOM_MOMENT_CONTEXT.typeId,
+    typeId,
     tableSessionId = "",
   } = context;
 

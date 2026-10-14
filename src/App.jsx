@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { pages } from "./pages";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,8 +10,6 @@ import {
   selectReturningCustomer,
   selectIsReturningCustomer,
 } from "./store/slices/qrContextSlice";
-import { DEFAULT_CONTEXT } from "./utils/gamesApi";
-import { DEFAULT_CUSTOM_MOMENT_CONTEXT } from "./utils/customMomentsApi";
 import { fetchGames, selectGames } from "./store/slices/gamesSlice";
 import { fetchCustomMoments, selectCustomMoments } from "./store/slices/customMomentsSlice";
 import { fetchCelebrationPackages, selectCelebrationPackages } from "./store/slices/celebrationPackagesSlice";
@@ -25,13 +23,10 @@ import ExclusiveOffersPage from "./pages/ExclusiveOffersPage";
 import { URLS } from "./config/urls";
 import { getImageUrl } from "./utils/imageUrl";
 import { notifyWhatsApp, buildReservationWhatsAppMessage } from "./utils/whatsapp";
+import { fetchWebsiteByDomainApi } from "./utils/qrApi";
+import { getDomainUrl } from "./utils/domainUrls";
 
-const MENU_APP_URL = import.meta.env.VITE_MENU_APP_URL || "https://app.thedesirelounge.com";
-const RESERVATION_URL = import.meta.env.VITE_RESERVATION_URL || "https://thedesirelounge.com/";
-const LIVE_SPORTS_URL = import.meta.env.VITE_LIVE_SPORTS_URL || "https://thedesirelounge.com/live-sports";
-const EVENTS_URL = import.meta.env.VITE_EVENTS_URL || "https://thedesirelounge.com/events";
-const LOGO_URL = "https://restaurents-api.cylsys.com/Assets/theDesireLounge/Image/Logo/logo.webp";
-const DEFAULT_RESERVATION_MODULE_ID = "3e340f23-d842-47f0-98e8-b0d458dc22dd";
+const MENU_APP_URL = URLS.app.menuApp;
 const DEFAULT_CELEBRATION_MODULE_IDS = {
   birthday: "02861404-4450-4d04-8461-679f3e8e09e3",
   corporate: "02ea8929-ad23-47a0-b416-db1d0f33ec46",
@@ -46,7 +41,7 @@ function normalizePath(path) {
   return path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
 }
 
-function buildMenuUrl(search, qrContext, pathname = "/", deviceId) {
+function buildMenuUrl(search, qrContext, pathname = "/", deviceId, menuAppUrl = MENU_APP_URL) {
   const inParams = new URLSearchParams(search);
   const data = getActiveQrData(search, qrContext);
   const out = new URLSearchParams();
@@ -76,7 +71,7 @@ function buildMenuUrl(search, qrContext, pathname = "/", deviceId) {
   if (dId) out.set("did", dId);
 
   const query = out.toString();
-  return `${MENU_APP_URL}${pathname}${query ? `?${query}` : ""}`;
+  return `${menuAppUrl}${pathname}${query ? `?${query}` : ""}`;
 }
 
 const SHORT_PARAM_ALIASES = {
@@ -131,7 +126,7 @@ function resolveParam(search, key) {
 
 function isQrEntry(search) {
   const params = new URLSearchParams(search);
-  return ["type", "location", "name", "resturant", "restaurant", "tableId", "sessionId", "tableSessionId"]
+  return ["type", "location", "name", "resturant", "restaurant", "tableCode", "tableId", "sessionId", "tableSessionId"]
     .some((key) => Boolean(params.get(key)));
 }
 
@@ -169,7 +164,7 @@ function getModuleIdByName(headers, moduleName) {
   return "";
 }
 
-function buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer) {
+function buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
   const ctx = getRequestContext(search, qrContext);
   const out = new URLSearchParams();
   if (ctx.companyId) out.set("cid", ctx.companyId);
@@ -192,10 +187,10 @@ function buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCust
   out.set("hc", "1");
   if (deviceId) out.set("did", deviceId);
   appendReturningParams(out, returningCustomer);
-  return `${MENU_APP_URL}/checkout?${out.toString()}`;
+  return `${menuAppUrl}/checkout?${out.toString()}`;
 }
 
-function buildMomentMenuUrl(search, qrContext, moment, context, deviceId, returningCustomer) {
+function buildMomentMenuUrl(search, qrContext, moment, context, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
   const out = new URLSearchParams();
   if (context.companyId) out.set("cid", context.companyId);
   if (context.branchId) out.set("bid", context.branchId);
@@ -223,10 +218,10 @@ function buildMomentMenuUrl(search, qrContext, moment, context, deviceId, return
   out.set("hc", "1");
   if (deviceId) out.set("did", deviceId);
   appendReturningParams(out, returningCustomer);
-  return `${MENU_APP_URL}/checkout?${out.toString()}`;
+  return `${menuAppUrl}/checkout?${out.toString()}`;
 }
 
-function buildPackageMenuUrl(search, qrContext, packageDetails, deviceId, returningCustomer) {
+function buildPackageMenuUrl(search, qrContext, packageDetails, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
   const context = getRequestContext(search, qrContext);
   const preserveTableContext = isQrEntry(search);
   const price = String(packageDetails.price || "").match(/[\d.]+/)?.[0] || "";
@@ -261,7 +256,7 @@ function buildPackageMenuUrl(search, qrContext, packageDetails, deviceId, return
   out.set("hc", "1");
   if (deviceId) out.set("did", deviceId);
   appendReturningParams(out, returningCustomer);
-  return `${MENU_APP_URL}/checkout?${out.toString()}`;
+  return `${menuAppUrl}/checkout?${out.toString()}`;
 }
 
 function getPackageCheckoutDetails(href) {
@@ -297,14 +292,14 @@ function getMembershipContext(search, qrContext, headerModules = []) {
 
   return {
     companyId:
-      data.companyId ||
       resolveParam(search, "companyId") ||
+      data.companyId ||
       context.companyId ||
       "",
 
     branchId:
-      data.branchId ||
       resolveParam(search, "branchId") ||
+      data.branchId ||
       context.branchId ||
       "",
 
@@ -324,23 +319,23 @@ function hasMatchingParams(search, contextParams) {
 function getGameContext(search, qrContext) {
   const data = getActiveQrData(search, qrContext);
   const companyId =
-    data.companyId ||
     resolveParam(search, "companyId") ||
+    data.companyId ||
     resolveParam(search, "companyID");
   const branchId =
-    data.branchId ||
     resolveParam(search, "branchId") ||
+    data.branchId ||
     resolveParam(search, "branchID");
   return companyId && branchId ? { companyId, branchId } : null;
 }
 
 function getRequestContext(search, qrContext) {
-  const context = getGameContext(search, qrContext) || DEFAULT_CONTEXT;
+  const context = getGameContext(search, qrContext) || {};
   const data = getActiveQrData(search, qrContext);
   return {
     ...context,
     tableId: data.tableId || resolveParam(search, "tableId") || "",
-    moduleId: data.moduleId || resolveParam(search, "moduleId") || DEFAULT_RESERVATION_MODULE_ID,
+    moduleId: resolveParam(search, "moduleId") || data.moduleId || "",
     tableSessionId:
       data.tableSessionId ||
       data.sessionId ||
@@ -362,9 +357,9 @@ function getRequestContext(search, qrContext) {
 function getCustomMomentContext(search, qrContext) {
   const data = getActiveQrData(search, qrContext);
   return {
-    companyId: data.companyId || resolveParam(search, "companyId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.companyId,
-    branchId: data.branchId || resolveParam(search, "branchId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.branchId,
-    typeId: data.typeId || resolveParam(search, "typeId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.typeId,
+    companyId: resolveParam(search, "companyId") || data.companyId || "",
+    branchId: resolveParam(search, "branchId") || data.branchId || "",
+    typeId: resolveParam(search, "typeId") || data.typeId || "",
     search: resolveParam(search, "momentSearch") || "",
     tableSessionId:
       data.tableSessionId ||
@@ -380,7 +375,7 @@ function getCustomMomentContext(search, qrContext) {
       resolveParam(search, "tableNumber") ||
       resolveParam(search, "tableNo") ||
       "",
-    moduleId: data.moduleId || resolveParam(search, "moduleId") || DEFAULT_CUSTOM_MOMENT_CONTEXT.moduleId,
+    moduleId: resolveParam(search, "moduleId") || data.moduleId || "",
   };
 }
 
@@ -445,7 +440,8 @@ function openReservation(
   setOpen,
   deviceId,
   headerModules = [],
-  returningCustomer = null
+  returningCustomer = null,
+  menuAppUrl = MENU_APP_URL
 ) {
   const ctx = getRequestContext(search, qrContext);
 
@@ -496,7 +492,7 @@ function openReservation(
   console.log("RESERVE TABLE MODULE ID:", reservationModuleId);
 
   window.location.assign(
-    `${MENU_APP_URL}/checkout?${out.toString()}`
+    `${menuAppUrl}/checkout?${out.toString()}`
   );
 
   setOpen(false);
@@ -509,7 +505,7 @@ function setInputValueByName(form, name, value) {
 }
 
 /** Reservation categories fetch aur reservation submit — dono ab Redux thunks (`dispatch(...).unwrap()`) se jaate hain. */
-function initReservation(root, context, dispatch, deviceId, returningCustomer) {
+function initReservation(root, context, dispatch, deviceId, returningCustomer, websiteInfo, whatsappPhone) {
   const form = root.querySelector("#reserve-form");
   if (!form) return () => {};
 
@@ -519,6 +515,10 @@ function initReservation(root, context, dispatch, deviceId, returningCustomer) {
   categoryField.value =
     resolveParam(window.location.search, "reservationCategory") || "TABLE_RESERVATION";
   form.appendChild(categoryField);
+
+  if (!returningCustomer && websiteInfo?.countryCode) {
+    setInputValueByName(form, "countryCode", websiteInfo.countryCode);
+  }
 
   if (returningCustomer) {
     setInputValueByName(form, "name", returningCustomer.guestName);
@@ -562,6 +562,7 @@ function initReservation(root, context, dispatch, deviceId, returningCustomer) {
     const countryCode =
       (formData.get("countryCode") || "").toString().trim() ||
       returningCustomer?.countryCode ||
+      websiteInfo?.countryCode ||
       DEFAULT_COUNTRY_CODE;
     const guestName =
       (formData.get("name") || "").toString().trim() || returningCustomer?.guestName || "";
@@ -608,6 +609,7 @@ function initReservation(root, context, dispatch, deviceId, returningCustomer) {
           table: tableId,
           guestCount: formData.get("guests"),
         }),
+        whatsappPhone,
       );
 
       form.reset();
@@ -632,7 +634,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function renderGameCards(games, type, search, qrContext, deviceId, returningCustomer) {
+function renderGameCards(games, type, search, qrContext, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
   const imageFolder = type === "playstation" ? "ps" : "games";
   return games.map((game) => {
     const image = game.image || `/assets/images/${imageFolder}/${game.cover}.webp`;
@@ -653,7 +655,7 @@ function renderGameCards(games, type, search, qrContext, deviceId, returningCust
             <span class="bg-card__status-dot" aria-hidden="true"></span>
             <span>${available ? "Available" : "In Use"}</span>
           </div>
-          ${available ? `<div class="bg-card__actions bg-card__actions--single"><a class="bg-card__btn bg-card__btn--solid bg-card__btn--status" data-game-session-link href="${escapeHtml(buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer))}">Reserve Session</a></div>` : ""}
+          ${available ? `<div class="bg-card__actions bg-card__actions--single"><a class="bg-card__btn bg-card__btn--solid bg-card__btn--status" data-game-session-link href="${escapeHtml(buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer, menuAppUrl))}">Reserve Session</a></div>` : ""}
         </div>
       </div>
     </article>`;
@@ -665,7 +667,7 @@ function renderGameCards(games, type, search, qrContext, deviceId, returningCust
  * Redux state (games slice) se aata hai aur is function ko already-loaded
  * form me milta hai.
  */
-function renderGamesGrid(root, type, gameState, search, qrContext, deviceId, returningCustomer) {
+function renderGamesGrid(root, type, gameState, search, qrContext, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
   const prefix = type === "playstation" ? "ps" : "bg";
   const grid = root.querySelector(`#${prefix}-grid`);
   const empty = root.querySelector(`#${prefix}-empty`);
@@ -703,7 +705,7 @@ function renderGamesGrid(root, type, gameState, search, qrContext, deviceId, ret
       const searchMatches = !normalizedQuery || `${game.name} ${game.difficulty} ${game.categories.join(" ")}`.toLowerCase().includes(normalizedQuery);
       return categoryMatches && searchMatches;
     });
-    grid.innerHTML = renderGameCards(visible, type, search, qrContext, deviceId, returningCustomer);
+    grid.innerHTML = renderGameCards(visible, type, search, qrContext, deviceId, returningCustomer, menuAppUrl);
     grid.hidden = visible.length === 0;
     if (empty) empty.hidden = visible.length > 0;
     if (count) count.textContent = `${visible.length} game${visible.length === 1 ? "" : "s"}`;
@@ -751,23 +753,153 @@ export default function App() {
   const cardModuleState = useSelector(selectCardModule);
   const packageModuleState = useSelector(selectPackageModule);
   const rootRef = useRef(null);
+  const themeVariablesRef = useRef([]);
+  const [websiteInfo, setWebsiteInfo] = useState(null);
+  const [websiteConfigStatus, setWebsiteConfigStatus] = useState("loading");
+  const [websiteConfigError, setWebsiteConfigError] = useState("");
+  const [websiteConfigRetry, setWebsiteConfigRetry] = useState(0);
+  const [websiteConfigDomain, setWebsiteConfigDomain] = useState("");
   const path = normalizePath(location.pathname);
+  const menuAppUrl = useMemo(
+    () => getDomainUrl(websiteInfo, "APP", URLS.app.menuApp),
+    [websiteInfo],
+  );
+  const websiteHomeUrl = useMemo(
+    () => getDomainUrl(websiteInfo, "WEBSITE", URLS.website.home),
+    [websiteInfo],
+  );
+  const liveSportsUrl = import.meta.env.VITE_LIVE_SPORTS_URL || `${websiteHomeUrl}/live-sports`;
+  const eventsUrl = import.meta.env.VITE_EVENTS_URL || `${websiteHomeUrl}/events`;
+  const websiteDomain =
+    import.meta.env.VITE_WEBSITE_DOMAIN ||
+    window.location.hostname;
+  const siteName = websiteInfo?.siteName?.trim();
+  const logoUrl = websiteInfo?.logoUrl ? getImageUrl(websiteInfo.logoUrl) : "";
+  const escapedSiteName = escapeHtml(siteName || "");
+  const tenantPhone = String(websiteInfo?.phone || "").replace(/\D/g, "");
+  const countryDigits = String(websiteInfo?.countryCode || "").replace(/\D/g, "");
+  const whatsappPhone = tenantPhone
+    ? `${countryDigits}${tenantPhone.replace(new RegExp(`^${countryDigits}`), "").replace(/^0+/, "")}`
+    : "";
+  const displayPhone = [websiteInfo?.countryCode, websiteInfo?.phone].filter(Boolean).join(" ");
+  const heroNameParts = siteName?.replace(/\s+/g, " ").trim().toUpperCase().split(" ") || [];
+  const logoMainName = escapeHtml(heroNameParts[0] || "");
+  const logoTagName = escapeHtml(heroNameParts.slice(1).join(" "));
+  const heroHeading = heroNameParts.length
+    ? `<h1 id="hero-heading" class="lounge-hero__title hero-anim">${escapeHtml(heroNameParts[0])}${heroNameParts.length > 1 ? `<br /><span class="lounge-hero__subbrand">${escapeHtml(heroNameParts.slice(1).join(" "))}</span>` : ""}</h1>`
+    : '<h1 id="hero-heading" class="lounge-hero__title hero-anim"></h1>';
 
   const searchWithDevice = (() => {
-    if (!deviceId) return location.search;
     const params = new URLSearchParams(location.search);
-    params.set("deviceId", deviceId);
+    const qrData = getActiveQrData(location.search, qrContext);
+    const companyId =
+      qrData.companyId || websiteInfo?.companyId || params.get("companyId") || params.get("cid");
+    const branchId =
+      qrData.branchId || websiteInfo?.branchId || params.get("branchId") || params.get("bid");
+    params.delete("cid");
+    params.delete("bid");
+    if (companyId) params.set("companyId", companyId);
+    if (branchId) params.set("branchId", branchId);
+    if (deviceId) params.set("deviceId", deviceId);
     return `?${params.toString()}`;
   })();
+  const hasTenantContext = Boolean(
+    resolveParam(searchWithDevice, "companyId") && resolveParam(searchWithDevice, "branchId"),
+  );
   const html = (pages[path] ?? pages["/"]).replace(
     'src="assets/images/careem.avif"',
     'src="/assets/images/careem.avif"',
-  ).replaceAll("assets/images/logo.webp?v=20260821", LOGO_URL)
-    .replaceAll('href="https://thedesirelounge.com/events.html"', `href="${EVENTS_URL}"`)
-    .replaceAll('href="https://thedesirelounge.com/live-sports.html"', `href="${LIVE_SPORTS_URL}"`);
+  ).replaceAll("assets/images/logo.webp?v=20260821", escapeHtml(logoUrl))
+    .replace(
+      '<h1 id="hero-heading" class="lounge-hero__title hero-anim">DESIRE<br /><span class="lounge-hero__subbrand">SHEESHA LOUNGE</span></h1>',
+      heroHeading,
+    )
+    .replaceAll("971509002202", whatsappPhone)
+    .replaceAll("+971 50 900 2202", displayPhone)
+    .replaceAll("DESIRE SHEESHA LOUNGE", escapedSiteName)
+    .replaceAll("Desire Sheesha Lounge", escapedSiteName)
+    .replaceAll("THE DESIRE LOUNGE", escapedSiteName)
+    .replaceAll("The Desire Lounge", escapedSiteName)
+    .replaceAll('<span class="logo__text">DESIRE</span>', `<span class="logo__text">${logoMainName}</span>`)
+    .replaceAll(
+      '<span class="logo__tag">SHEESHA LOUNGE</span>',
+      logoTagName ? `<span class="logo__tag">${logoTagName}</span>` : "",
+    )
+    .replaceAll('href="https://thedesirelounge.com/events.html"', `href="${eventsUrl}"`)
+    .replaceAll('href="https://thedesirelounge.com/live-sports.html"', `href="${liveSportsUrl}"`)
+    .replaceAll("https://app.thedesirelounge.com", menuAppUrl)
+    .replaceAll("https://thedesirelounge.com", websiteHomeUrl);
   useEffect(() => {
     dispatch(fetchQrContext(location.search));
   }, [location.search]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setWebsiteInfo(null);
+    setWebsiteConfigDomain(websiteDomain);
+    setWebsiteConfigStatus("loading");
+    setWebsiteConfigError("");
+
+    fetchWebsiteByDomainApi(websiteDomain, { signal: controller.signal })
+      .then((response) => {
+        const data = response?.data && typeof response.data === "object" ? response.data : response;
+        if (!data || typeof data !== "object" || Array.isArray(data)) {
+          throw new Error("Website configuration API returned an invalid response.");
+        }
+        setWebsiteInfo(data);
+        setWebsiteConfigStatus("succeeded");
+      })
+      .catch((error) => {
+        if (error.name === "AbortError") return;
+        console.error(`Unable to load website configuration for ${websiteDomain}:`, error);
+        setWebsiteConfigError(error.message || "Unable to load website configuration.");
+        setWebsiteConfigStatus("failed");
+      });
+
+    return () => controller.abort();
+  }, [websiteDomain, websiteConfigRetry]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    themeVariablesRef.current.forEach((key) => root.style.removeProperty(key));
+    themeVariablesRef.current = [];
+    if (!websiteInfo?.themeJson) return;
+
+    let theme = websiteInfo.themeJson;
+    if (typeof theme === "string") {
+      try {
+        theme = JSON.parse(theme);
+      } catch (error) {
+        console.error("Website themeJson is not valid JSON:", error);
+        return;
+      }
+    }
+    if (!theme || typeof theme !== "object" || Array.isArray(theme)) {
+      console.error("Website themeJson must be a JSON object.");
+      return;
+    }
+
+    Object.entries(theme).forEach(([key, value]) => {
+      if (!/^--[a-z0-9-]+$/i.test(key) || !["string", "number"].includes(typeof value)) return;
+      root.style.setProperty(key, String(value));
+      themeVariablesRef.current.push(key);
+    });
+  }, [websiteInfo]);
+
+  useEffect(() => {
+    document.title = siteName || "Digital Lounge";
+    let favicon = document.querySelector('link[rel~="icon"]');
+    if (logoUrl) {
+      if (!favicon) {
+        favicon = document.createElement("link");
+        favicon.rel = "icon";
+        document.head.appendChild(favicon);
+      }
+      favicon.href = logoUrl;
+    } else {
+      favicon?.remove();
+    }
+  }, [websiteInfo, siteName, logoUrl]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -818,13 +950,13 @@ export default function App() {
       if (link.matches("[data-package-book]") && link.dataset.packageDetails) {
         e.preventDefault();
         const packageDetails = JSON.parse(link.dataset.packageDetails);
-        window.location.assign(buildPackageMenuUrl(searchWithDevice, qrContext, packageDetails, deviceId, returningCustomer));
+        window.location.assign(buildPackageMenuUrl(searchWithDevice, qrContext, packageDetails, deviceId, returningCustomer, menuAppUrl));
         return;
       }
       const packageDetails = getPackageCheckoutDetails(href || "");
       if (packageDetails) {
         e.preventDefault();
-        window.location.assign(buildPackageMenuUrl(searchWithDevice, qrContext, packageDetails, deviceId, returningCustomer));
+        window.location.assign(buildPackageMenuUrl(searchWithDevice, qrContext, packageDetails, deviceId, returningCustomer, menuAppUrl));
         return;
       }
       if (isReservationTrigger(link)) {
@@ -836,11 +968,12 @@ export default function App() {
   setOpen,
   deviceId,
   headerModulesState.items,
-  returningCustomer
+  returningCustomer,
+  menuAppUrl
 );
         return;
       }
-      if (href === LIVE_SPORTS_URL || href === EVENTS_URL) {
+      if (href === liveSportsUrl || href === eventsUrl) {
         e.preventDefault();
         const targetUrl = new URL(href, window.location.origin);
         const currentParams = new URLSearchParams(searchWithDevice);
@@ -850,7 +983,7 @@ export default function App() {
         window.location.assign(targetUrl.toString());
         return;
       }
-      if (href?.startsWith(MENU_APP_URL)) {
+      if (href?.startsWith(menuAppUrl)) {
         e.preventDefault();
         const targetUrl = new URL(href);
         const targetPath = targetUrl.pathname;
@@ -867,19 +1000,19 @@ export default function App() {
 
         if (qrContextStatus === "loading" || qrContextStatus === "idle") {
           const onContextReady = (event) => {
-            window.location.replace(buildMenuUrl(targetSearch, event.detail, targetPath, deviceId));
+            window.location.replace(buildMenuUrl(targetSearch, event.detail, targetPath, deviceId, menuAppUrl));
           };
           window.addEventListener("qr-context-ready", onContextReady, { once: true });
           window.setTimeout(() => {
             window.removeEventListener("qr-context-ready", onContextReady);
             if (document.visibilityState === "visible") {
-              window.location.replace(buildMenuUrl(targetSearch, qrContext, targetPath, deviceId));
+              window.location.replace(buildMenuUrl(targetSearch, qrContext, targetPath, deviceId, menuAppUrl));
             }
           }, 8000);
           return;
         }
 
-        window.location.replace(buildMenuUrl(targetSearch, qrContext, targetPath, deviceId));
+        window.location.replace(buildMenuUrl(targetSearch, qrContext, targetPath, deviceId, menuAppUrl));
         return;
       }
       const isInternalPath = typeof href === "string" && href.startsWith("/") && !href.startsWith("//");
@@ -922,6 +1055,7 @@ export default function App() {
             getCustomMomentContext(searchWithDevice, qrContext),
             deviceId,
             returningCustomer,
+            menuAppUrl,
           ));
           return;
         }
@@ -935,7 +1069,8 @@ export default function App() {
   setOpen,
   deviceId,
   headerModulesState.items,
-  returningCustomer
+  returningCustomer,
+  menuAppUrl
 );
       }
     };
@@ -960,6 +1095,8 @@ export default function App() {
       dispatch,
       deviceId,
       returningCustomer,
+      websiteInfo,
+      whatsappPhone,
     );
 
     // Keep hash navigation working after React route changes.
@@ -984,7 +1121,7 @@ export default function App() {
       cleanupReservation();
       document.body.classList.remove("lounge-drawer-open");
     };
-  }, [[
+  }, [
   path,
   location.hash,
   location.search,
@@ -994,9 +1131,12 @@ export default function App() {
   returningCustomer,
   searchWithDevice,
   headerModulesState.items,
+  menuAppUrl,
+  liveSportsUrl,
+  eventsUrl,
   navigate,
   dispatch
-]]);
+]);
 
   const gamesType = path === "/board-games" ? "board-games" : null;
   const isPlaystationPage = path === "/playstation";
@@ -1093,7 +1233,7 @@ export default function App() {
             .includes(normalizedQuery);
         return categoryMatches && searchMatches;
       });
-      grid.innerHTML = renderGameCards(visible, pageMode, searchWithDevice, qrContext, deviceId, returningCustomer);
+      grid.innerHTML = renderGameCards(visible, pageMode, searchWithDevice, qrContext, deviceId, returningCustomer, menuAppUrl);
       grid.hidden = visible.length === 0;
       if (empty) empty.hidden = visible.length > 0;
       if (count) count.textContent = `${visible.length} session${visible.length === 1 ? "" : "s"}`;
@@ -1123,7 +1263,7 @@ export default function App() {
       filters.removeEventListener("click", onFilter);
       searchInput?.removeEventListener("input", onSearch);
     };
-  }, [usesCardModuleGrid, isPlaystationPage, isBoardGamesPage, cardModuleState, searchWithDevice, qrContext, deviceId, returningCustomer]);
+  }, [usesCardModuleGrid, isPlaystationPage, isBoardGamesPage, cardModuleState, searchWithDevice, qrContext, deviceId, returningCustomer, menuAppUrl]);
 
   const isMakeMomentPage = path === "/make-it-your-moment";
   const usesMomentCardGrid = isMakeMomentPage;
@@ -1555,9 +1695,14 @@ export default function App() {
   }, [path, searchWithDevice, qrContext]);
 
   useEffect(() => {
-    if (path !== "/") return;
+    if (
+      path !== "/" ||
+      websiteConfigStatus !== "succeeded" ||
+      !websiteInfo?.companyId ||
+      !websiteInfo?.branchId
+    ) return;
     dispatch(fetchHeaderModules({ search: searchWithDevice, qrContext }));
-  }, [path, searchWithDevice, qrContext, dispatch]);
+  }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, dispatch]);
 
   useEffect(() => {
     const urlModuleId = new URLSearchParams(searchWithDevice).get("moduleId");
@@ -1573,10 +1718,15 @@ export default function App() {
     } else if (path === "/corporate-bookings") {
       overrides = { moduleId: urlModuleId || MODULE_IDS.corporateCard };
     }
-    if (!overrides) return undefined;
+    if (
+      !overrides ||
+      websiteConfigStatus !== "succeeded" ||
+      !websiteInfo?.companyId ||
+      !websiteInfo?.branchId
+    ) return undefined;
     dispatch(fetchCardModule({ search: searchWithDevice, qrContext, overrides }));
     return undefined;
-  }, [path, searchWithDevice, qrContext, dispatch]);
+  }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, dispatch]);
 
   useEffect(() => {
     const urlModuleId = new URLSearchParams(searchWithDevice).get("moduleId");
@@ -1586,10 +1736,15 @@ export default function App() {
     } else if (path === "/birthday-celebrations" || path === "/corporate-bookings") {
       overrides = { moduleId: urlModuleId || MODULE_IDS.packages };
     }
-    if (!overrides) return undefined;
+    if (
+      !overrides ||
+      websiteConfigStatus !== "succeeded" ||
+      !websiteInfo?.companyId ||
+      !websiteInfo?.branchId
+    ) return undefined;
     dispatch(fetchPackageModuleItems({ search: searchWithDevice, qrContext, overrides }));
     return undefined;
-  }, [path, searchWithDevice, qrContext, dispatch]);
+  }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, dispatch]);
 
   useEffect(() => {
     if (path !== "/") return undefined;
@@ -1686,10 +1841,40 @@ export default function App() {
     if (path !== "/menu") return;
     const hasFreshContext = qrContext?.data && hasMatchingParams(searchWithDevice, qrContext.params);
     const canRedirect = !location.search || hasFreshContext || qrContextStatus === "failed";
-    if (canRedirect) window.location.replace(buildMenuUrl(searchWithDevice, qrContext, "/", deviceId));
-  }, [path, searchWithDevice, location.search, qrContext, qrContextStatus, deviceId]);
+    if (canRedirect) window.location.replace(buildMenuUrl(searchWithDevice, qrContext, "/", deviceId, menuAppUrl));
+  }, [path, searchWithDevice, location.search, qrContext, qrContextStatus, deviceId, menuAppUrl]);
 
-  if (path === "/exclusive-offers") return <ExclusiveOffersPage />;
+  const hasWebsiteConfig = websiteConfigDomain === websiteDomain;
+  if (!hasWebsiteConfig || websiteConfigStatus === "loading") {
+    return (
+      <div className="lounge-page lounge-page--redirect" role="status" aria-live="polite">
+        <p className="bg-loading">Loading venue...</p>
+      </div>
+    );
+  }
+
+  if (websiteConfigStatus === "failed") {
+    return (
+      <div className="lounge-page lounge-page--redirect" role="alert">
+        <p>Could not load venue information for {websiteDomain}.</p>
+        <p>{websiteConfigError}</p>
+        <button type="button" onClick={() => setWebsiteConfigRetry((attempt) => attempt + 1)}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (path === "/exclusive-offers") {
+    return (
+      <ExclusiveOffersPage
+        siteName={siteName}
+        logoUrl={logoUrl}
+        websiteInfo={websiteInfo}
+        menuAppUrl={menuAppUrl}
+      />
+    );
+  }
 
   if (path === "/menu") {
     return (
@@ -1699,5 +1884,25 @@ export default function App() {
     );
   }
 
-  return <div ref={rootRef} className="lounge-page" dangerouslySetInnerHTML={{ __html: html }} />;
+  const tenantInfo = [
+    websiteInfo?.branchName && `<strong>${escapeHtml(websiteInfo.branchName)}</strong>`,
+    websiteInfo?.address && `<address>${escapeHtml(websiteInfo.address)}</address>`,
+    displayPhone &&
+      `<a href="tel:${escapeHtml(`${websiteInfo.countryCode || ""}${websiteInfo.phone || ""}`)}">${escapeHtml(displayPhone)}</a>`,
+    websiteInfo?.timezone && `<span>Local timezone: ${escapeHtml(websiteInfo.timezone)}</span>`,
+  ].filter(Boolean).join("");
+  const pageHtml = `${html}${tenantInfo ? `<footer class="tenant-info">${tenantInfo}</footer>` : ""}`;
+
+  return (
+    <div
+      ref={rootRef}
+      className="lounge-page"
+      data-website-url-id={websiteInfo?.websiteUrlId || ""}
+      data-company-id={websiteInfo?.companyId || ""}
+      data-branch-id={websiteInfo?.branchId || ""}
+      data-branch-name={websiteInfo?.branchName || ""}
+      data-timezone={websiteInfo?.timezone || ""}
+      dangerouslySetInnerHTML={{ __html: pageHtml }}
+    />
+  );
 }

@@ -1,5 +1,3 @@
-import { URLS } from "../config/urls";
-
 /**
  * Restaurant ke WhatsApp number par ek pre-filled deep link open karta hai.
  *
@@ -12,9 +10,11 @@ import { URLS } from "../config/urls";
  * replace kiya ja sakta hai — baaki app is function ko as-is call karta
  * rahega.
  */
-export function notifyWhatsApp(message) {
+export function notifyWhatsApp(message, phoneNumber) {
   try {
-    const url = URLS.contact.whatsappBooking(message);
+    const phone = String(phoneNumber || "").replace(/\D/g, "");
+    if (!phone) return;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   } catch {
     // Popup blocked ya window unavailable — silently ignore, is se

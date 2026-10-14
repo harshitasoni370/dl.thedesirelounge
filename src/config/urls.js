@@ -1,4 +1,14 @@
-const externalBaseUrl = import.meta.env.VITE_WEBSITE_URL || "https://thedesirelounge.com";
+const currentHost = typeof window !== "undefined" ? window.location.hostname : "";
+const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+const tenantDomain = currentHost.replace(/^(dl|www)\./i, "");
+const isLocalHost = !tenantDomain || tenantDomain === "localhost" || /^127\./.test(tenantDomain);
+const defaultMenuAppUrl = isLocalHost
+  ? "https://app.thedesirelounge.com"
+  : `https://app.${tenantDomain}`;
+const externalBaseUrl = (
+  import.meta.env.VITE_WEBSITE_URL || currentOrigin || "https://thedesirelounge.com"
+).replace(/\/+$/, "");
+const menuAppUrl = import.meta.env.VITE_MENU_APP_URL || defaultMenuAppUrl;
 const environment =
   import.meta.env.VITE_APP_ENV || (import.meta.env.MODE === "production" ? "production" : "uat");
 
@@ -10,6 +20,7 @@ const environment =
 const CONFIGURED_API_BASE = (
   import.meta.env.VITE_API_BASE_URL || "https://restaurents-api.cylsys.com/api"
 ).replace(/\/+$/, "");
+const DOMAIN_API_PROXY_BASE = "/domain-api";
 const UPSTREAM_BASE = import.meta.env.DEV
   ? (import.meta.env.VITE_API_PROXY_BASE || "/api").replace(/\/+$/, "")
   : CONFIGURED_API_BASE;
@@ -17,7 +28,8 @@ const UPSTREAM_BASE = import.meta.env.DEV
 export const API = {
   upstreamBase: UPSTREAM_BASE,
   upstream: {
-    qrContext: `${UPSTREAM_BASE}/QR/qrcontext`,
+    websiteByDomain: `${DOMAIN_API_PROXY_BASE}/WebsiteUrl/by-domain`,
+    qrContext: `${DOMAIN_API_PROXY_BASE}/QR/qrcontext`,
     qrCheckDevice: `${UPSTREAM_BASE}/QR/checkDevice`,
     playstationGames: `${UPSTREAM_BASE}/Playstation/Playstationgamelist`,
     boardGames: `${UPSTREAM_BASE}/BoardGame/Boardgamelist`,
@@ -51,7 +63,7 @@ export const MODULE_IDS = {
 
 export const URLS = {
   api: {
-    qrContext: import.meta.env.VITE_QR_CONTEXT_API_URL || API.upstream.qrContext,
+    qrContext:API.upstream.qrContext,
     games: API.upstream.playstationGames,
     reservationCategories: API.upstream.reservationCategories,
     createReservation: API.upstream.createReservation,
@@ -61,9 +73,8 @@ export const URLS = {
   },
   app: {
     menu: import.meta.env.VITE_MENU_URL || "/menu",
-    menuApp: import.meta.env.VITE_MENU_APP_URL || "https://app.thedesirelounge.com",
-    categories:
-      import.meta.env.VITE_CATEGORIES_URL || "https://app.thedesirelounge.com/categories",
+    menuApp: menuAppUrl,
+    categories: import.meta.env.VITE_CATEGORIES_URL || `${menuAppUrl}/categories`,
   },
   website: {
     home: externalBaseUrl,
@@ -102,6 +113,7 @@ export const URLS = {
 };
 
 export const QR_CONTEXT_PARAMS = [
+  "tableCode",
   "type",
   "location",
   "name",

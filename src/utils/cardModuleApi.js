@@ -2,8 +2,6 @@ import { apiRequest } from "./apiClient";
 import { API } from "../config/urls";
 
 export const DEFAULT_CARD_CONTEXT = {
-  companyId: "0ffbe39e-abf8-4827-9107-1a04b39f3416",
-  branchId: "f4fb1d76-83a0-4965-86b5-63da28249dae",
   moduleId: "1ea712e6-147b-4488-ae77-a8fd6d54ebba",
 };
 
@@ -124,8 +122,8 @@ export function normalizeCardModule(payload) {
 
 export async function fetchCardModule(context = {}, { signal } = {}) {
   const params = {
-    companyId: context.companyId || DEFAULT_CARD_CONTEXT.companyId,
-    branchId: context.branchId || DEFAULT_CARD_CONTEXT.branchId,
+    companyId: context.companyId,
+    branchId: context.branchId,
     moduleId: context.moduleId || DEFAULT_CARD_CONTEXT.moduleId,
     categoryId: context.categoryId || "",
     search: context.search || "",

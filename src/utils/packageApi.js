@@ -2,8 +2,6 @@ import { apiRequest } from "./apiClient";
 import { API, MODULE_IDS } from "../config/urls";
 
 export const DEFAULT_PACKAGE_CONTEXT = {
-  companyId: "0ffbe39e-abf8-4827-9107-1a04b39f3416",
-  branchId: "f4fb1d76-83a0-4965-86b5-63da28249dae",
   moduleId: MODULE_IDS.packages || "34636e48-b3d7-4961-bd91-6a73a2f8a85a",
 };
 
@@ -112,8 +110,8 @@ export function normalizePackageModule(payload) {
 
 export async function fetchPackageModuleItems(context = {}, { signal } = {}) {
   const params = {
-    companyId: context.companyId || DEFAULT_PACKAGE_CONTEXT.companyId,
-    branchId: context.branchId || DEFAULT_PACKAGE_CONTEXT.branchId,
+    companyId: context.companyId,
+    branchId: context.branchId,
     moduleId: context.moduleId || DEFAULT_PACKAGE_CONTEXT.moduleId,
   };
 

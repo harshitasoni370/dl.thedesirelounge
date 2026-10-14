@@ -161,6 +161,8 @@ export const fetchQrContext = createAsyncThunk(
       return { params, data: currentData, fetchedAt: null, deviceId };
     }
 
+    params.domain = params.domain || window.location.hostname;
+
     ensureQrSessionId(getState().qrContext.context?.data || {}, params);
 
     publishContext({ params, data: null, fetchedAt: null, deviceId });

@@ -61,6 +61,10 @@ function assertEnv(env) {
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   assertEnv(env);
+  const domainApiBase = new URL(
+    env.VITE_DOMAIN_API_BASE_URL || "https://fumesandflavoursapi.cylsysuat.com/api",
+  );
+  const domainApiPath = domainApiBase.pathname.replace(/\/+$/, "");
 
   const appEnv = env.VITE_APP_ENV || detectEnv(env.VITE_API_BASE_URL);
 
@@ -89,6 +93,12 @@ export default defineConfig(({ command, mode }) => {
       port: 5173,
       strictPort: false,
       proxy: {
+        "/domain-api": {
+          target: domainApiBase.origin,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/domain-api/, domainApiPath),
+        },
         [env.VITE_API_PROXY_BASE || "/api"]: {
           target: env.VITE_API_BASE_URL,
           changeOrigin: true,

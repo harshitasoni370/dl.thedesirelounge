@@ -15,6 +15,11 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, "dist");
 const PORT = Number(process.env.PORT || 3000);
+const DOMAIN_API_BASE = (
+  process.env.DOMAIN_API_BASE_URL ||
+  process.env.VITE_DOMAIN_API_BASE_URL ||
+  "https://fumesandflavoursapi.cylsysuat.com/api"
+).replace(/\/+$/, "");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -49,6 +54,48 @@ function sendFile(res, filePath, { immutable = false } = {}) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(url.pathname);
+
+  const domainApiRoutes = new Map([
+    ["/domain-api/WebsiteUrl/by-domain", "/WebsiteUrl/by-domain"],
+    ["/domain-api/QR/qrcontext", "/QR/qrcontext"],
+  ]);
+  const domainApiPath = domainApiRoutes.get(pathname);
+  if (domainApiPath) {
+    if (req.method !== "GET") {
+      res.statusCode = 405;
+      res.setHeader("Allow", "GET");
+      res.end("Method not allowed");
+      return;
+    }
+
+    try {
+      const upstreamUrl = new URL(`${DOMAIN_API_BASE}${domainApiPath}`);
+      upstreamUrl.search = url.search;
+      const upstreamResponse = await fetch(upstreamUrl, {
+        headers: { Accept: "application/json" },
+      });
+      res.statusCode = upstreamResponse.status;
+      res.setHeader(
+        "Content-Type",
+        upstreamResponse.headers.get("content-type") || "application/json",
+      );
+      const cacheControl = upstreamResponse.headers.get("cache-control");
+      if (cacheControl) res.setHeader("Cache-Control", cacheControl);
+      res.end(Buffer.from(await upstreamResponse.arrayBuffer()));
+    } catch (error) {
+      console.error(`[The-desire-lounge] domain API proxy failed: ${error.message}`);
+      res.statusCode = 502;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({ error: "Domain API is unavailable." }));
+    }
+    return;
+  }
+
+  if (pathname.startsWith("/domain-api/")) {
+    res.statusCode = 404;
+    res.end("Domain API route not found");
+    return;
+  }
 
   // Health check (hosting/monitoring ke liye)
   if (pathname === "/healthz") {

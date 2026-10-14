@@ -5,16 +5,17 @@ function getCardContext(search, qrContext, overrides = {}) {
   const params = new URLSearchParams(search);
   const data = qrContext?.data || {};
   return {
-    companyId: data.companyId || params.get("companyId") || DEFAULT_CARD_CONTEXT.companyId,
-    branchId: data.branchId || params.get("branchId") || DEFAULT_CARD_CONTEXT.branchId,
-    moduleId: overrides.moduleId || params.get("moduleId") || DEFAULT_CARD_CONTEXT.moduleId,
+    companyId: params.get("companyId") || params.get("cid") || data.companyId || "",
+    branchId: params.get("branchId") || params.get("bid") || data.branchId || "",
+    moduleId: params.get("moduleId") || overrides.moduleId || DEFAULT_CARD_CONTEXT.moduleId,
     categoryId: overrides.categoryId || params.get("categoryId") || "",
     search: overrides.search || params.get("cardSearch") || "",
     status: overrides.status || "",
   };
 }
 
-const MODULE_CACHE_KEY = (c) => `${c.moduleId}__${c.categoryId || "all"}__${c.search || ""}__${c.status || ""}`;
+const MODULE_CACHE_KEY = (c) =>
+  `${c.companyId}__${c.branchId}__${c.moduleId}__${c.categoryId || "all"}__${c.search || ""}__${c.status || ""}`;
 
 export const fetchCardModule = createAsyncThunk(
   "cardModule/fetch",

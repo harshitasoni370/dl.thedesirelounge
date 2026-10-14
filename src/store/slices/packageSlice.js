@@ -5,12 +5,12 @@ function getPackageContext(search, qrContext, overrides = {}) {
   const params = new URLSearchParams(search);
   const data = qrContext?.data || {};
   return {
-    companyId: data.companyId || params.get("companyId") || DEFAULT_PACKAGE_CONTEXT.companyId,
-    branchId: data.branchId || params.get("branchId") || DEFAULT_PACKAGE_CONTEXT.branchId,
+    companyId: params.get("companyId") || params.get("cid") || data.companyId || "",
+    branchId: params.get("branchId") || params.get("bid") || data.branchId || "",
     moduleId:
-      overrides.moduleId ||
       params.get("packageModuleId") ||
       params.get("moduleId") ||
+      overrides.moduleId ||
       DEFAULT_PACKAGE_CONTEXT.moduleId,
   };
 }

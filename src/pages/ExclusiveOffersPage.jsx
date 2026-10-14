@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { selectQrContext, selectDeviceId } from "../store/slices/qrContextSlice";
-import { selectPackageModule, fetchPackageModuleItems } from "../store/slices/packageSlice";
-import { MODULE_IDS } from "../config/urls";
-import { useEffect } from "react";
+import { selectPackageModule } from "../store/slices/packageSlice";
+import { MODULE_IDS, URLS } from "../config/urls";
 
 const staticOffers = [
   {
@@ -124,12 +123,22 @@ function buildOffersFromPackages(packages) {
   });
 }
 
-function getContext(search, qrContext) {
+function getContext(search, qrContext, websiteInfo) {
   const params = new URLSearchParams(search);
-  const data = qrContext?.data || {};
+  const hasQrParams = [
+    "tableCode",
+    "type",
+    "location",
+    "name",
+    "resturant",
+    "restaurant",
+    "tableId",
+    "sessionId",
+  ].some((key) => params.has(key));
+  const data = hasQrParams ? qrContext?.data || {} : {};
   return {
-    companyId: data.companyId || params.get("companyId") || "",
-    branchId: data.branchId || params.get("branchId") || "",
+    companyId: data.companyId || websiteInfo?.companyId || params.get("companyId") || params.get("cid") || "",
+    branchId: data.branchId || websiteInfo?.branchId || params.get("branchId") || params.get("bid") || "",
     sessionId: data.tableSessionId || data.sessionId || params.get("sessionId") || "",
     tableSessionId: data.tableSessionId || data.sessionId || params.get("tableSessionId") || params.get("sessionId") || "",
     tableId: data.tableId || params.get("tableId") || "",
@@ -138,33 +147,20 @@ function getContext(search, qrContext) {
   };
 }
 
-export default function ExclusiveOffersPage() {
+export default function ExclusiveOffersPage({
+  siteName,
+  logoUrl,
+  websiteInfo,
+  menuAppUrl = URLS.app.menuApp,
+}) {
   const location = useLocation();
-  const dispatch = useDispatch();
   const qrContext = useSelector(selectQrContext);
   const deviceId = useSelector(selectDeviceId);
   const packageModuleState = useSelector(selectPackageModule);
   const [selected, setSelected] = useState(null);
   const [expandedOffers, setExpandedOffers] = useState({});
   
-  const context = getContext(location.search, qrContext);
-
-  const searchWithDevice = (() => {
-    const params = new URLSearchParams(location.search);
-    if (deviceId) params.set("deviceId", deviceId);
-    return `?${params.toString()}`;
-  })();
-
-  useEffect(() => {
-    const urlModuleId = new URLSearchParams(location.search).get("moduleId");
-    dispatch(
-      fetchPackageModuleItems({
-        search: searchWithDevice,
-        qrContext,
-        overrides: { moduleId: urlModuleId || MODULE_IDS.exclusiveOffers },
-      }),
-    );
-  }, [location.search, searchWithDevice, qrContext, dispatch]);
+  const context = getContext(location.search, qrContext, websiteInfo);
 
   const dynamicOffers = buildOffersFromPackages(packageModuleState?.items);
   const offers = dynamicOffers.length > 0 ? dynamicOffers : staticOffers;
@@ -259,19 +255,26 @@ export default function ExclusiveOffersPage() {
     });
 
     window.location.assign(
-      `https://app.thedesirelounge.com/checkout?${params}`
+      `${menuAppUrl}/checkout?${params}`
     );
   };
 
   return (
-    <div className="lounge-page offer-page">
+    <div
+      className="lounge-page offer-page"
+      data-website-url-id={websiteInfo?.websiteUrlId || ""}
+      data-company-id={websiteInfo?.companyId || ""}
+      data-branch-id={websiteInfo?.branchId || ""}
+      data-branch-name={websiteInfo?.branchName || ""}
+      data-timezone={websiteInfo?.timezone || ""}
+    >
       <a className="skip-link" href="#main">Skip to content</a>
       <div className="lounge-bg" aria-hidden="true"><div className="lounge-bg__image" style={{ backgroundImage: "url('/assets/images/index-hero-bg.webp')" }} /><div className="lounge-bg__overlay" /></div>
       <div className="lounge-shell bg-games-shell" id="app">
         <header className="lounge-header">
-          <a href="/" className="logo lounge-header__logo" aria-label="THE DESIRE LOUNGE home">
-            <img src="https://restaurents-api.cylsys.com/Assets/thedesirelounge/Image/Logo/logo.webp" alt="" className="logo__mark" width="48" height="48" />
-            <span className="logo__copy"><span className="logo__text">THE DESIRE LOUNGE</span></span>
+          <a href="/" className="logo lounge-header__logo" aria-label={`${siteName || "Home"} home`}>
+            {logoUrl && <img src={logoUrl} alt="" className="logo__mark" width="48" height="48" />}
+            <span className="logo__copy"><span className="logo__text">{siteName}</span></span>
           </a>
           <div className="lounge-header__actions">
             <a href="/#services" className="bg-games-back" aria-label="Back to Digital Lounge"><span>Lounge</span></a>
@@ -482,9 +485,21 @@ export default function ExclusiveOffersPage() {
 </button>
               </>
             )}
-            <p className="offer-sheet__brand">The Desire Lounge - Customer Offers &amp; Packages</p>
+            <p className="offer-sheet__brand">{siteName} - Customer Offers &amp; Packages</p>
           </section></article>
         </main>
+        {(websiteInfo?.branchName || websiteInfo?.address || websiteInfo?.phone || websiteInfo?.timezone) && (
+          <footer className="tenant-info">
+            {websiteInfo.branchName && <strong>{websiteInfo.branchName}</strong>}
+            {websiteInfo.address && <address>{websiteInfo.address}</address>}
+            {websiteInfo.phone && (
+              <a href={`tel:${websiteInfo.countryCode || ""}${websiteInfo.phone}`}>
+                {[websiteInfo.countryCode, websiteInfo.phone].filter(Boolean).join(" ")}
+              </a>
+            )}
+            {websiteInfo.timezone && <span>Local timezone: {websiteInfo.timezone}</span>}
+          </footer>
+        )}
       </div>
     </div>
   );

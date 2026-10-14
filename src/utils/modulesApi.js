@@ -1,11 +1,6 @@
 import { apiRequest } from "./apiClient";
 import { API } from "../config/urls";
 
-export const DEFAULT_MODULES_CONTEXT = {
-  companyId: "0ffbe39e-abf8-4827-9107-1a04b39f3416",
-  branchId: "f4fb1d76-83a0-4965-86b5-63da28249dae",
-};
-
 function unwrapHeaders(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
@@ -46,11 +41,8 @@ export function normalizeHeaderModules(payload) {
 }
 
 export async function fetchHeaderModules(context = {}, { signal } = {}) {
-  const companyId = context.companyId || DEFAULT_MODULES_CONTEXT.companyId;
-  const branchId = context.branchId || DEFAULT_MODULES_CONTEXT.branchId;
-
   const payload = await apiRequest(API.upstream.headerModules, {
-    params: { companyId, branchId },
+    params: { companyId: context.companyId, branchId: context.branchId },
     signal,
   });
 

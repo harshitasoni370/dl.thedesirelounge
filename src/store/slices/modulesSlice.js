@@ -1,13 +1,12 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { fetchHeaderModules as fetchHeaderModulesApi } from "../../utils/modulesApi";
-import { DEFAULT_MODULES_CONTEXT } from "../../utils/modulesApi";
 
 function getHeaderModulesContext(search, qrContext) {
   const params = new URLSearchParams(search);
   const data = qrContext?.data || {};
   return {
-    companyId: data.companyId || params.get("companyId") || DEFAULT_MODULES_CONTEXT.companyId,
-    branchId: data.branchId || params.get("branchId") || DEFAULT_MODULES_CONTEXT.branchId,
+    companyId: params.get("companyId") || params.get("cid") || data.companyId || "",
+    branchId: params.get("branchId") || params.get("bid") || data.branchId || "",
   };
 }
 
