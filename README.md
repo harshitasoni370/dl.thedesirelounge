@@ -64,7 +64,7 @@ npm run package
 
 - `VITE_API_BASE_URL`: upstream API base URL, including `/api`.
 - `VITE_DOMAIN_API_BASE_URL`: domain/QR API base used by the Vite development proxy (defaults to the UAT API).
-- `VITE_WEBSITE_DOMAIN`: optional domain override for local preview; otherwise website details are loaded for the current hostname.
+- `VITE_WEBSITE_DOMAIN`: optional domain override for localhost preview only. Live deployments always use the current hostname so multiple domains can share the same build.
 - `DOMAIN_API_BASE_URL`: optional runtime override for the packaged Node server's domain/QR API proxy.
 - `VITE_APP_ENV`: optional environment label shown in build metadata.
 - `VITE_IMAGE_BASE_URL`: optional image host override.

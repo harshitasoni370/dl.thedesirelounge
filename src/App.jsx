@@ -6,6 +6,9 @@ import {
   fetchQrContext,
   selectQrContext,
   selectQrContextStatus,
+  selectQrContextError,
+  TABLE_OCCUPIED_ERROR,
+  QR_SESSION_DEVICE_MISMATCH_ERROR,
   selectDeviceId,
   selectReturningCustomer,
   selectIsReturningCustomer,
@@ -24,7 +27,7 @@ import { URLS } from "./config/urls";
 import { getImageUrl } from "./utils/imageUrl";
 import { notifyWhatsApp, buildReservationWhatsAppMessage } from "./utils/whatsapp";
 import { fetchWebsiteByDomainApi } from "./utils/qrApi";
-import { getDomainUrl } from "./utils/domainUrls";
+import { getDomainUrl, getWebsiteDomain } from "./utils/domainUrls";
 
 const MENU_APP_URL = URLS.app.menuApp;
 const DEFAULT_CELEBRATION_MODULE_IDS = {
@@ -126,8 +129,8 @@ function resolveParam(search, key) {
 
 function isQrEntry(search) {
   const params = new URLSearchParams(search);
-  return ["type", "location", "name", "resturant", "restaurant", "tableCode", "tableId", "sessionId", "tableSessionId"]
-    .some((key) => Boolean(params.get(key)));
+  const qrKeys = new Set(["type", "location", "name", "resturant", "restaurant", "tablecode", "tableid", "sessionid", "tablesessionid"]);
+  return Array.from(params.entries()).some(([key, value]) => qrKeys.has(key.toLowerCase()) && Boolean(value));
 }
 
 function getActiveQrData(search, qrContext) {
@@ -743,6 +746,8 @@ export default function App() {
   const dispatch = useDispatch();
   const qrContext = useSelector(selectQrContext);
   const qrContextStatus = useSelector(selectQrContextStatus);
+  const qrContextError = useSelector(selectQrContextError);
+  const qrContextBlocked = [TABLE_OCCUPIED_ERROR, QR_SESSION_DEVICE_MISMATCH_ERROR].includes(qrContextError);
   const deviceId = useSelector(selectDeviceId);
   const returningCustomer = useSelector(selectReturningCustomer);
   const gamesByType = useSelector(selectGames);
@@ -770,9 +775,7 @@ export default function App() {
   );
   const liveSportsUrl = import.meta.env.VITE_LIVE_SPORTS_URL || `${websiteHomeUrl}/live-sports`;
   const eventsUrl = import.meta.env.VITE_EVENTS_URL || `${websiteHomeUrl}/events`;
-  const websiteDomain =
-    import.meta.env.VITE_WEBSITE_DOMAIN ||
-    window.location.hostname;
+  const websiteDomain = getWebsiteDomain();
   const siteName = websiteInfo?.siteName?.trim();
   const logoUrl = websiteInfo?.logoUrl ? getImageUrl(websiteInfo.logoUrl) : "";
   const escapedSiteName = escapeHtml(siteName || "");
@@ -1839,12 +1842,21 @@ export default function App() {
 
   useEffect(() => {
     if (path !== "/menu") return;
+    if (qrContextBlocked) return;
     const hasFreshContext = qrContext?.data && hasMatchingParams(searchWithDevice, qrContext.params);
     const canRedirect = !location.search || hasFreshContext || qrContextStatus === "failed";
     if (canRedirect) window.location.replace(buildMenuUrl(searchWithDevice, qrContext, "/", deviceId, menuAppUrl));
-  }, [path, searchWithDevice, location.search, qrContext, qrContextStatus, deviceId, menuAppUrl]);
+  }, [path, searchWithDevice, location.search, qrContext, qrContextStatus, qrContextBlocked, deviceId, menuAppUrl]);
 
   const hasWebsiteConfig = websiteConfigDomain === websiteDomain;
+  if (qrContextBlocked) {
+    return (
+      <div className="lounge-page lounge-page--redirect" role="alert">
+        <p>{qrContextError}</p>
+      </div>
+    );
+  }
+
   if (!hasWebsiteConfig || websiteConfigStatus === "loading") {
     return (
       <div className="lounge-page lounge-page--redirect" role="status" aria-live="polite">

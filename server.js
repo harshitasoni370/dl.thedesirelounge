@@ -18,7 +18,8 @@ const PORT = Number(process.env.PORT || 3000);
 const DOMAIN_API_BASE = (
   process.env.DOMAIN_API_BASE_URL ||
   process.env.VITE_DOMAIN_API_BASE_URL ||
-  "https://fumesandflavoursapi.cylsysuat.com/api"
+  // "https://fumesandflavoursapi.cylsysuat.com/api"
+  "https://restaurents-api.cylsys.com/api"
 ).replace(/\/+$/, "");
 
 const MIME = {

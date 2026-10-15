@@ -1,3 +1,15 @@
+export function getWebsiteDomain() {
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const isLocalHost =
+    hostname === "localhost" ||
+    hostname === "::1" ||
+    hostname.startsWith("127.") ||
+    hostname.endsWith(".localhost");
+  const localDomainOverride = import.meta.env.VITE_WEBSITE_DOMAIN?.trim();
+
+  return (isLocalHost && localDomainOverride) || hostname;
+}
+
 export function getDomainUrl(websiteInfo, appType, fallbackUrl) {
   const domainsJson = websiteInfo?.domainsJson;
   if (!domainsJson) return fallbackUrl;

@@ -6,6 +6,7 @@ import {
   getOrCreateDeviceId,
   getOrCreateDeviceIdSync,
 } from "../../utils/qrApi";
+import { getWebsiteDomain } from "../../utils/domainUrls";
 
 function safeSessionSet(key, value) {
   try {
@@ -144,12 +145,105 @@ function expandShortParams(params) {
   return next;
 }
 
+function readParam(params, key) {
+  const match = Object.keys(params).find((paramKey) => paramKey.toLowerCase() === key.toLowerCase());
+  return match ? String(params[match] || "").trim() : "";
+}
+
+export const TABLE_OCCUPIED_ERROR = "This table is already booked.";
+export const QR_SESSION_DEVICE_MISMATCH_ERROR = "This table session belongs to another device.";
+const ZERO_SESSION_ID = "00000000-0000-0000-0000-000000000000";
+const QR_SESSION_MAX_AGE_MS = 60 * 60 * 1000;
+
+function isReusableSessionId(value) {
+  return Boolean(value && value.trim().toLowerCase() !== ZERO_SESSION_ID);
+}
+
+function qrSessionStorageKey(domain, tableCode) {
+  return `desire_qr_session:${domain.toLowerCase()}:${tableCode.toLowerCase()}`;
+}
+
+function qrSessionDeviceStorageKey(domain, tableCode) {
+  return `${qrSessionStorageKey(domain, tableCode)}:device`;
+}
+
+function qrSessionCreatedAtStorageKey(domain, tableCode) {
+  return `${qrSessionStorageKey(domain, tableCode)}:createdAt`;
+}
+
+function readSavedQrSession(domain, tableCode) {
+  const key = qrSessionStorageKey(domain, tableCode);
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      const value = storage.getItem(key);
+      if (isReusableSessionId(value)) {
+        const createdAt = Number(storage.getItem(qrSessionCreatedAtStorageKey(domain, tableCode)));
+        if (!Number.isFinite(createdAt) || Date.now() - createdAt >= QR_SESSION_MAX_AGE_MS) {
+          storage.removeItem(key);
+          storage.removeItem(qrSessionDeviceStorageKey(domain, tableCode));
+          storage.removeItem(qrSessionCreatedAtStorageKey(domain, tableCode));
+          return { sessionId: "", deviceId: "", expired: true };
+        }
+        return {
+          sessionId: value,
+          deviceId: storage.getItem(qrSessionDeviceStorageKey(domain, tableCode)) || "",
+          createdAt,
+          expired: false,
+        };
+      }
+      if (value) {
+        storage.removeItem(key);
+        storage.removeItem(qrSessionDeviceStorageKey(domain, tableCode));
+        storage.removeItem(qrSessionCreatedAtStorageKey(domain, tableCode));
+      }
+    } catch {
+      // Try the other browser storage.
+    }
+  }
+  return null;
+}
+
+function saveQrSession(domain, tableCode, sessionId, deviceId, createdAt = Date.now()) {
+  const key = qrSessionStorageKey(domain, tableCode);
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      storage.setItem(key, sessionId);
+      storage.setItem(qrSessionDeviceStorageKey(domain, tableCode), deviceId);
+      storage.setItem(qrSessionCreatedAtStorageKey(domain, tableCode), String(createdAt));
+    } catch {
+      // The other browser storage may still be available.
+    }
+  }
+}
+
+function readContextValue(data, keys) {
+  if (!data || typeof data !== "object") return "";
+  const wanted = new Set(keys.map((key) => key.toLowerCase()));
+  for (const [key, value] of Object.entries(data)) {
+    if (wanted.has(key.toLowerCase()) && value !== null && value !== undefined) return String(value).trim();
+    const nested = readContextValue(value, keys);
+    if (nested) return nested;
+  }
+  return "";
+}
+
+function isOccupiedContext(data) {
+  const sessionId = readContextValue(data, ["sessionId", "tableSessionId", "uidSessionId"]);
+  const sessionStatus = readContextValue(data, ["sessionStatus"]);
+  return sessionId.toLowerCase() === ZERO_SESSION_ID && sessionStatus.toLowerCase() === "occupied";
+}
+
 export const fetchQrContext = createAsyncThunk(
   "qrContext/fetch",
   async (search, { signal, rejectWithValue, dispatch, getState }) => {
     const searchParams = new URLSearchParams(search);
     const params = expandShortParams(Object.fromEntries(searchParams.entries()));
-    const hasQrContext = QR_CONTEXT_PARAMS.some((key) => key !== "deviceId" && params[key]);
+    const tableCode =
+      readParam(params, "tableCode") ||
+      readParam(params, "tableNo") ||
+      readParam(params, "tableNumber") ||
+      readParam(params, "name");
+    const hasQrContext = QR_CONTEXT_PARAMS.some((key) => key !== "deviceId" && readParam(params, key));
 
     const deviceId = params.deviceId || (await getOrCreateDeviceId(search));
     if (!params.deviceId) params.deviceId = deviceId;
@@ -161,14 +255,34 @@ export const fetchQrContext = createAsyncThunk(
       return { params, data: currentData, fetchedAt: null, deviceId };
     }
 
-    params.domain = params.domain || window.location.hostname;
+    params.domain =
+      readParam(params, "domain") ||
+      getWebsiteDomain();
+    params.tableCode = tableCode;
 
-    ensureQrSessionId(getState().qrContext.context?.data || {}, params);
+    const savedSession = tableCode ? readSavedQrSession(params.domain, tableCode) : null;
+    if (savedSession?.sessionId && savedSession.deviceId && savedSession.deviceId !== deviceId) {
+      return rejectWithValue(QR_SESSION_DEVICE_MISMATCH_ERROR);
+    }
+
+    const savedSessionId = savedSession?.sessionId || "";
+    const requestedSessionId = savedSession?.expired
+      ? ""
+      : savedSessionId || readParam(params, "sessionId");
+    if (isReusableSessionId(requestedSessionId)) {
+      params.sessionId = requestedSessionId;
+      params.tableSessionId = requestedSessionId;
+      if (tableCode && requestedSessionId === savedSessionId && !savedSession.deviceId) {
+        saveQrSession(params.domain, tableCode, savedSessionId, deviceId);
+      }
+    } else if (!tableCode) {
+      ensureQrSessionId(getState().qrContext.context?.data || {}, params);
+    }
 
     publishContext({ params, data: null, fetchedAt: null, deviceId });
 
     const directContextKeys = ["companyId", "branchId", "tableId", "sessionId"];
-    if (directContextKeys.every((key) => params[key])) {
+    if (!tableCode && directContextKeys.every((key) => params[key])) {
       const data = Object.fromEntries(
         [...directContextKeys, "companyName", "branchName", "tableName", "tableNumber", "tableNo"]
           .filter((key) => params[key])
@@ -188,21 +302,48 @@ export const fetchQrContext = createAsyncThunk(
 
     try {
       const data = flattenQrData(await fetchQrContextApi(params, { signal }));
-
-      const resolvedContext = { params, data, fetchedAt: new Date().toISOString(), deviceId };
-      publishContext(resolvedContext);
-      window.dispatchEvent(new CustomEvent("qr-context-ready", { detail: resolvedContext }));
-
       const companyId = readCompanyId(data, params);
       if (companyId) {
         dispatch(checkDevice({ deviceId, companyId })).catch(() => {});
       }
+
+      if (isOccupiedContext(data)) {
+        if (!savedSessionId || requestedSessionId !== savedSessionId) {
+          return rejectWithValue(TABLE_OCCUPIED_ERROR);
+        }
+        data.sessionId = savedSessionId;
+        data.tableSessionId = savedSessionId;
+      }
+
+      const isResumingSavedSession =
+        Boolean(savedSessionId) && requestedSessionId === savedSessionId;
+      const responseSessionId = isResumingSavedSession
+        ? savedSessionId
+        : readContextValue(data, ["sessionId", "tableSessionId", "uidSessionId"]);
+      if (tableCode && isReusableSessionId(responseSessionId)) {
+        data.sessionId = responseSessionId;
+        data.tableSessionId = responseSessionId;
+        params.sessionId = responseSessionId;
+        params.tableSessionId = responseSessionId;
+        const createdAt =
+          isResumingSavedSession && savedSession
+            ? savedSession.createdAt
+            : Date.now();
+        saveQrSession(params.domain, tableCode, responseSessionId, deviceId, createdAt);
+      }
+
+      const resolvedContext = { params, data, fetchedAt: new Date().toISOString(), deviceId };
+      publishContext(resolvedContext);
+      window.dispatchEvent(new CustomEvent("qr-context-ready", { detail: resolvedContext }));
 
       return resolvedContext;
     } catch (error) {
       if (error.name === "AbortError") throw error;
       return rejectWithValue(error.message);
     }
+  },
+  {
+    condition: (_, { getState }) => getState().qrContext.status !== "loading",
   },
 );
 

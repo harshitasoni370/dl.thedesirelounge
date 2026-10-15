@@ -4,6 +4,7 @@ import {
   getOrCreateDeviceId as resolveDeviceId,
   getOrCreateDeviceIdSync as resolveDeviceIdSync,
 } from "./deviceId";
+import { getWebsiteDomain } from "./domainUrls";
 
 export { persistDeviceId, readUrlDeviceId } from "./deviceId";
 
@@ -20,7 +21,11 @@ export async function fetchQrContextApi(
   { signal } = {}
 ) {
   return apiRequest(API.upstream.qrContext, {
-    params,
+    params: {
+      domain: params.domain || getWebsiteDomain(),
+      tableCode: params.tableCode,
+      ...(params.sessionId ? { sessionId: params.sessionId } : {}),
+    },
     signal,
   });
 }

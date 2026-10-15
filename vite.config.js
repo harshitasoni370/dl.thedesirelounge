@@ -62,7 +62,9 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   assertEnv(env);
   const domainApiBase = new URL(
-    env.VITE_DOMAIN_API_BASE_URL || "https://fumesandflavoursapi.cylsysuat.com/api",
+    env.VITE_DOMAIN_API_BASE_URL || 
+    // "https://fumesandflavoursapi.cylsysuat.com/api",
+       "https://restaurents-api.cylsys.com/api",
   );
   const domainApiPath = domainApiBase.pathname.replace(/\/+$/, "");
 
