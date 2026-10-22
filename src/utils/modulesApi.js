@@ -28,6 +28,7 @@ export function normalizeHeaderModules(payload) {
           moduleName: asText(mod.moduleName || mod.name),
           moduleType: asText(mod.moduleType || mod.type),
           subtitle: asText(mod.subtitle || mod.description),
+          icon: asText(mod.icon),
           status: asText(mod.status, "ACTIVE"),
         }))
       : [];
@@ -35,6 +36,7 @@ export function normalizeHeaderModules(payload) {
       uidHeaderId: asText(header.uidHeaderId || header.headerId || header.id),
       headerName: asText(header.headerName || header.name),
       headerCode: asText(header.headerCode || header.code),
+      status: asText(header.status, "ACTIVE"),
       modules,
     };
   });

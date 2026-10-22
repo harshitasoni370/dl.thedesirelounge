@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { fetchCardModule as fetchCardModuleApi, DEFAULT_CARD_CONTEXT } from "../../utils/cardModuleApi";
+import { fetchCardModule as fetchCardModuleApi } from "../../utils/cardModuleApi";
 
 function getCardContext(search, qrContext, overrides = {}) {
   const params = new URLSearchParams(search);
@@ -7,7 +7,7 @@ function getCardContext(search, qrContext, overrides = {}) {
   return {
     companyId: params.get("companyId") || params.get("cid") || data.companyId || "",
     branchId: params.get("branchId") || params.get("bid") || data.branchId || "",
-    moduleId: params.get("moduleId") || overrides.moduleId || DEFAULT_CARD_CONTEXT.moduleId,
+    moduleId: params.get("moduleId") || overrides.moduleId || "",
     categoryId: overrides.categoryId || params.get("categoryId") || "",
     search: overrides.search || params.get("cardSearch") || "",
     status: overrides.status || "",

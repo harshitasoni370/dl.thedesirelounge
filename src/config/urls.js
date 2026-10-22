@@ -50,15 +50,10 @@ export const MODULE_IDS = {
   corporate: "02ea8929-ad23-47a0-b416-db1d0f33ec46",
   membership: "b38fa611-ea6c-4414-9398-fbe6ca1d314c",
   reservation: "3e340f23-d842-47f0-98e8-b0d458dc22dd",
-  playstationCard: "1ea712e6-147b-4488-ae77-a8fd6d54ebba",
-  boardGamesCard: "1ea712e6-147b-4488-ae77-a8fd6d54ebba",
-  customMomentsCard: "1ea712e6-147b-4488-ae77-a8fd6d54ebba",
   packages: "34636e48-b3d7-4961-bd91-6a73a2f8a85a",
   exclusiveOffers: "34636e48-b3d7-4961-bd91-6a73a2f8a85a",
   birthdayPackages: "34636e48-b3d7-4961-bd91-6a73a2f8a85a",
   corporatePackages: "34636e48-b3d7-4961-bd91-6a73a2f8a85a",
-  birthdayCard: "a5a76163-1ffd-4ae2-b166-ac63509419db",
-  corporateCard: "0987905b-3163-4949-bc9f-6b88fad49723",
 };
 
 export const URLS = {

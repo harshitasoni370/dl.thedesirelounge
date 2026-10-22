@@ -167,7 +167,16 @@ function getModuleIdByName(headers, moduleName) {
   return "";
 }
 
-function buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
+function buildGameMenuUrl(
+  search,
+  qrContext,
+  type,
+  game,
+  deviceId,
+  returningCustomer,
+  menuAppUrl = MENU_APP_URL,
+  moduleId = "",
+) {
   const ctx = getRequestContext(search, qrContext);
   const out = new URLSearchParams();
   if (ctx.companyId) out.set("cid", ctx.companyId);
@@ -177,7 +186,7 @@ function buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCust
    out.set("tn", ctx.tableNumber);
 }
   if (ctx.tableSessionId) out.set("sid", ctx.tableSessionId);
-  out.set("mid", ctx.moduleId);
+  out.set("mid", moduleId || ctx.moduleId);
   out.set("cat", type === "playstation" ? "PLAYSTATION" : "BOARD_GAME");
   out.set("rc", "GAMING");
   out.set("rt", "Gaming");
@@ -637,7 +646,24 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function renderGameCards(games, type, search, qrContext, deviceId, returningCustomer, menuAppUrl = MENU_APP_URL) {
+function normalizeCategory(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function renderGameCards(
+  games,
+  type,
+  search,
+  qrContext,
+  deviceId,
+  returningCustomer,
+  menuAppUrl = MENU_APP_URL,
+  moduleId = "",
+) {
   const imageFolder = type === "playstation" ? "ps" : "games";
   return games.map((game) => {
     const image = game.image || `/assets/images/${imageFolder}/${game.cover}.webp`;
@@ -658,7 +684,7 @@ function renderGameCards(games, type, search, qrContext, deviceId, returningCust
             <span class="bg-card__status-dot" aria-hidden="true"></span>
             <span>${available ? "Available" : "In Use"}</span>
           </div>
-          ${available ? `<div class="bg-card__actions bg-card__actions--single"><a class="bg-card__btn bg-card__btn--solid bg-card__btn--status" data-game-session-link href="${escapeHtml(buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer, menuAppUrl))}">Reserve Session</a></div>` : ""}
+          ${available ? `<div class="bg-card__actions bg-card__actions--single"><a class="bg-card__btn bg-card__btn--solid bg-card__btn--status" data-game-session-link href="${escapeHtml(buildGameMenuUrl(search, qrContext, type, game, deviceId, returningCustomer, menuAppUrl, moduleId))}">Reserve Session</a></div>` : ""}
         </div>
       </div>
     </article>`;
@@ -1178,7 +1204,8 @@ export default function App() {
 
     const { items: cards, status, error } = cardModuleState;
     const mappedCards = cards.map((card, index) => {
-      const categories = card.categoryName ? [card.categoryName] : [fallbackCategory];
+      const categoryName = card.categoryName || fallbackCategory;
+      const categories = [normalizeCategory(categoryName)].filter(Boolean);
       const players = card.features?.[0] || "1-4 Players";
       const duration = card.features?.[1] || card.priceLabel || "60 min";
       const difficulty = card.features?.[2] || card.subtitle || "Casual";
@@ -1190,6 +1217,19 @@ export default function App() {
         id: card.uidCardId || `${prefix}-card-${index + 1}`,
         name: card.name,
         categories,
+        searchText: [
+          card.name,
+          card.code,
+          card.description,
+          card.subtitle,
+          categoryName,
+          players,
+          duration,
+          difficulty,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
         cover:
           card.code ||
           card.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ||
@@ -1204,8 +1244,9 @@ export default function App() {
       };
     });
 
-    let activeCategory = "all";
-    let query = "";
+    let activeCategory =
+      filters.querySelector("[data-filter].is-active")?.dataset.filter || "all";
+    let query = searchInput?.value || "";
 
     const render = () => {
       if (status === "loading" || status === "idle") {
@@ -1228,15 +1269,29 @@ export default function App() {
       }
       const normalizedQuery = query.trim().toLowerCase();
       const visible = mappedCards.filter((game) => {
-        const categoryMatches = activeCategory === "all" || game.categories.includes(activeCategory);
-        const searchMatches =
-          !normalizedQuery ||
-          `${game.name} ${game.difficulty} ${game.categories.join(" ")} ${game.players} ${game.duration}`
-            .toLowerCase()
-            .includes(normalizedQuery);
+        const categoryMatches =
+          activeCategory === "all" ||
+          game.categories.some(
+            (category) =>
+              category === activeCategory || category.startsWith(`${activeCategory}-`),
+          );
+        const searchMatches = !normalizedQuery || game.searchText.includes(normalizedQuery);
         return categoryMatches && searchMatches;
       });
-      grid.innerHTML = renderGameCards(visible, pageMode, searchWithDevice, qrContext, deviceId, returningCustomer, menuAppUrl);
+      const moduleName = pageMode === "playstation" ? "Playstation" : "Board Games";
+      const moduleId =
+        new URLSearchParams(searchWithDevice).get("moduleId") ||
+        getModuleIdByName(headerModulesState.items, moduleName);
+      grid.innerHTML = renderGameCards(
+        visible,
+        pageMode,
+        searchWithDevice,
+        qrContext,
+        deviceId,
+        returningCustomer,
+        menuAppUrl,
+        moduleId,
+      );
       grid.hidden = visible.length === 0;
       if (empty) empty.hidden = visible.length > 0;
       if (count) count.textContent = `${visible.length} session${visible.length === 1 ? "" : "s"}`;
@@ -1257,14 +1312,28 @@ export default function App() {
       query = searchInput.value;
       render();
     };
+    const resetButton = rootRef.current?.querySelector(`#${prefix}-reset-filters`);
+    const onReset = () => {
+      activeCategory = "all";
+      query = "";
+      if (searchInput) searchInput.value = "";
+      filters.querySelectorAll("[data-filter]").forEach((item) => {
+        const selected = item.dataset.filter === "all";
+        item.classList.toggle("is-active", selected);
+        item.setAttribute("aria-pressed", String(selected));
+      });
+      render();
+    };
 
     filters.addEventListener("click", onFilter);
     searchInput?.addEventListener("input", onSearch);
+    resetButton?.addEventListener("click", onReset);
     render();
 
     return () => {
       filters.removeEventListener("click", onFilter);
       searchInput?.removeEventListener("input", onSearch);
+      resetButton?.removeEventListener("click", onReset);
     };
   }, [usesCardModuleGrid, isPlaystationPage, isBoardGamesPage, cardModuleState, searchWithDevice, qrContext, deviceId, returningCustomer, menuAppUrl]);
 
@@ -1699,7 +1768,14 @@ export default function App() {
 
   useEffect(() => {
     if (
-      path !== "/" ||
+      ![
+        "/",
+        "/playstation",
+        "/board-games",
+        "/make-it-your-moment",
+        "/birthday-celebrations",
+        "/corporate-bookings",
+      ].includes(path) ||
       websiteConfigStatus !== "succeeded" ||
       !websiteInfo?.companyId ||
       !websiteInfo?.branchId
@@ -1710,16 +1786,26 @@ export default function App() {
   useEffect(() => {
     const urlModuleId = new URLSearchParams(searchWithDevice).get("moduleId");
     let overrides = null;
-    if (path === "/playstation") {
-      overrides = { moduleId: urlModuleId || MODULE_IDS.playstationCard };
-    } else if (path === "/board-games") {
-      overrides = { moduleId: urlModuleId || MODULE_IDS.boardGamesCard };
-    } else if (path === "/make-it-your-moment") {
-      overrides = { moduleId: urlModuleId || MODULE_IDS.customMomentsCard };
-    } else if (path === "/birthday-celebrations") {
-      overrides = { moduleId: urlModuleId || MODULE_IDS.birthdayCard };
-    } else if (path === "/corporate-bookings") {
-      overrides = { moduleId: urlModuleId || MODULE_IDS.corporateCard };
+    const cardModuleNameByPath = {
+      "/playstation": "Playstation",
+      "/board-games": "Board Games",
+      "/make-it-your-moment": "Make It Your Moment",
+      "/birthday-celebrations": "Birthday Packages",
+      "/corporate-bookings": "Corporate",
+    };
+    const cardModuleName = cardModuleNameByPath[path];
+    if (cardModuleName) {
+      if (headerModulesState.status === "failed") {
+        console.error("Unable to load header modules", headerModulesState.error);
+        return undefined;
+      }
+      if (headerModulesState.status !== "succeeded") return undefined;
+      const moduleId = getModuleIdByName(headerModulesState.items, cardModuleName);
+      if (!moduleId) {
+        console.error(`Active ${cardModuleName} module was not found in header modules.`);
+        return undefined;
+      }
+      overrides = { moduleId: urlModuleId || moduleId };
     }
     if (
       !overrides ||
@@ -1729,7 +1815,7 @@ export default function App() {
     ) return undefined;
     dispatch(fetchCardModule({ search: searchWithDevice, qrContext, overrides }));
     return undefined;
-  }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, dispatch]);
+  }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, headerModulesState, dispatch]);
 
   useEffect(() => {
     const urlModuleId = new URLSearchParams(searchWithDevice).get("moduleId");
@@ -1762,80 +1848,157 @@ export default function App() {
       return undefined;
     }
 
-    const findHeader = (code) => headers.find((h) => h.headerCode === code);
-    const mainHeader = findHeader("MAIN_SECTION");
-    const orderHeader = findHeader("ORDER_ONLINE");
-    const stayHeader = findHeader("STAY_CONNECTED");
+    const sectionConfigs = {
+      MAIN_SECTION: { selector: "#services", kind: "service" },
+      ORDER_ONLINE: { selector: "#order-online", kind: "service" },
+      STAY_CONNECTED: { selector: "#connect-social", kind: "social" },
+      DINING: { kind: "service" },
+    };
+    root
+      .querySelectorAll("#services, #order-online, #connect-social, [data-module-header-section]")
+      .forEach((section) => {
+        section.hidden = true;
+      });
 
-    const updateServiceCards = (selector, modules) => {
-      if (!modules || !modules.length) return;
-      const section = root.querySelector(selector);
-      if (!section) return;
-      const grid = section.querySelector(":scope .lounge-services__grid");
+    const normalizeName = (value) =>
+      String(value || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\s+/g, " ").trim().toLowerCase();
+    const moduleAliases = { "noon food": "noon" };
+    const orderedHeaders = [
+      ...headers.filter((header) => header.headerCode !== "STAY_CONNECTED"),
+      ...headers.filter((header) => header.headerCode === "STAY_CONNECTED"),
+    ];
+    const makeSection = (header, kind) => {
+      const section = document.createElement("section");
+      section.className = kind === "social"
+        ? "lounge-panel"
+        : "lounge-panel lounge-panel--borderless";
+      section.id = `module-header-${header.headerCode.toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
+      section.dataset.moduleHeaderSection = "true";
+      section.dataset.headerCode = header.headerCode;
+
+      const heading = document.createElement("div");
+      heading.className = "lounge-panel__head";
+      const leftRule = document.createElement("span");
+      leftRule.className = "lounge-panel__rule";
+      leftRule.setAttribute("aria-hidden", "true");
+      const title = document.createElement("h2");
+      const rightRule = leftRule.cloneNode();
+      heading.append(leftRule, title, rightRule);
+      section.append(heading);
+
+      const content = document.createElement("div");
+      content.className = kind === "social" ? "lounge-social" : "lounge-services";
+      if (kind !== "social") {
+        const grid = document.createElement("div");
+        grid.className = "lounge-services__grid";
+        content.append(grid);
+      }
+      section.append(content);
+      root.querySelector("#main")?.append(section);
+      return section;
+    };
+
+    orderedHeaders.forEach((header) => {
+      if (!header.headerCode) return;
+      const config = sectionConfigs[header.headerCode] || { kind: "service" };
+      let section = config.selector ? root.querySelector(config.selector) : null;
+      if (!section) {
+        section = [...root.querySelectorAll("[data-header-code]")].find(
+          (candidate) => candidate.dataset.headerCode === header.headerCode,
+        );
+      }
+      if (!section) section = makeSection(header, config.kind);
+      section.hidden = Boolean(header.status) && header.status.toUpperCase() !== "ACTIVE";
+
+      let heading = section.querySelector(":scope > .lounge-panel__head");
+      if (!heading) {
+        heading = document.createElement("div");
+        heading.className = "lounge-panel__head";
+        const leftRule = document.createElement("span");
+        leftRule.className = "lounge-panel__rule";
+        leftRule.setAttribute("aria-hidden", "true");
+        const title = document.createElement("h2");
+        const rightRule = leftRule.cloneNode();
+        heading.append(leftRule, title, rightRule);
+        section.insertBefore(heading, section.firstChild);
+      }
+      const headingTitle = heading.querySelector("h2");
+      if (headingTitle) headingTitle.textContent = header.headerName;
+      root.querySelector("#main")?.append(section);
+
+      const kind = config.kind;
+      const grid = kind === "social"
+        ? section.querySelector(":scope .lounge-social")
+        : section.querySelector(":scope .lounge-services__grid");
       if (!grid) return;
-      const cards = [...grid.querySelectorAll(":scope > .lounge-card")];
-      modules.forEach((mod, index) => {
-        const card = cards[index];
-        if (!card) return;
-        const hidden = mod.status && mod.status.toUpperCase() !== "ACTIVE";
-        card.hidden = hidden;
-        if (mod.uidModuleId) {
-          card.dataset.uidModuleId = mod.uidModuleId;
-          card.dataset.moduleId = mod.uidModuleId;
+
+      const templates = new Map();
+      [...grid.children].forEach((card) => {
+        const title = card.querySelector(kind === "social" ? ":scope > strong" : ":scope > h2");
+        const key = normalizeName(title?.textContent);
+        if (key) templates.set(key, card);
+      });
+
+      grid.replaceChildren();
+      const usedTemplates = new Set();
+      (header.modules || []).forEach((module) => {
+        const moduleName = module.moduleName || "";
+        const key = normalizeName(moduleName);
+        const templateKey = moduleAliases[key] || key;
+        const template = templates.get(key) || templates.get(templateKey);
+        const card = template && !usedTemplates.has(template)
+          ? template
+          : template?.cloneNode(true) || document.createElement("div");
+        if (template) usedTemplates.add(template);
+        card.classList.add(kind === "social" ? "lounge-social__item" : "lounge-card");
+        card.hidden = Boolean(module.status) && module.status.toUpperCase() !== "ACTIVE";
+        if (module.uidModuleId) {
+          card.dataset.uidModuleId = module.uidModuleId;
+          card.dataset.moduleId = module.uidModuleId;
         }
-        if (mod.moduleType) {
-          card.dataset.moduleType = mod.moduleType;
+        if (module.moduleType) card.dataset.moduleType = module.moduleType;
+
+        let title = card.querySelector(kind === "social" ? ":scope > strong" : ":scope > h2");
+        if (!title) {
+          title = document.createElement(kind === "social" ? "strong" : "h2");
+          card.append(title);
         }
-        const h2 = card.querySelector(":scope > h2");
-        if (h2 && mod.moduleName) {
-          const words = mod.moduleName.trim().split(/\s+/);
-          if (index === 5 && words.length >= 3) {
-            h2.innerHTML = `${words.slice(0, 2).join(" ")}<br />${words.slice(2).join(" ")}`;
-          } else if (index === 11 && words.length >= 4) {
-            h2.innerHTML = `${words.slice(0, 3).join(" ")}<br />${words.slice(3).join(" ")}`;
+        title.textContent = moduleName;
+
+        const subtitleSelector = kind === "social"
+          ? ":scope > span:not(.lounge-social__icon)"
+          : ":scope > p";
+        let subtitle = card.querySelector(subtitleSelector);
+        if (!subtitle) {
+          subtitle = document.createElement("span");
+          if (kind !== "social") subtitle = document.createElement("p");
+          card.append(subtitle);
+        }
+        subtitle.textContent = module.subtitle || "";
+        subtitle.hidden = !module.subtitle;
+
+        if (module.icon || !template) {
+          let icon = card.querySelector(kind === "social" ? ":scope > .lounge-social__icon" : ":scope > .lounge-card__icon");
+          if (!icon) {
+            icon = document.createElement("span");
+            icon.className = kind === "social" ? "lounge-social__icon" : "lounge-card__icon";
+            icon.setAttribute("aria-hidden", "true");
+            card.prepend(icon);
+          }
+          if (module.icon) {
+            const image = document.createElement("img");
+            image.src = getImageUrl(module.icon);
+            image.alt = "";
+            image.loading = "lazy";
+            icon.replaceChildren(image);
           } else {
-            h2.textContent = mod.moduleName;
+            icon.textContent = moduleName.trim().charAt(0).toUpperCase();
           }
         }
-        const p = card.querySelector(":scope > p");
-        if (p && mod.subtitle) p.textContent = mod.subtitle;
-      });
-    };
 
-    const updateSocialCards = (selector, modules) => {
-      if (!modules || !modules.length) return;
-      const section = root.querySelector(selector);
-      if (!section) return;
-      const grid = section.querySelector(":scope .lounge-social");
-      if (!grid) return;
-      const cards = [...grid.querySelectorAll(":scope > .lounge-social__item")];
-      modules.forEach((mod, index) => {
-        const card = cards[index];
-        if (!card) return;
-        const hidden = mod.status && mod.status.toUpperCase() !== "ACTIVE";
-        card.hidden = hidden;
-        if (mod.uidModuleId) {
-          card.dataset.uidModuleId = mod.uidModuleId;
-          card.dataset.moduleId = mod.uidModuleId;
-        }
-        if (!mod.moduleName) return;
-        [...card.childNodes].forEach((node) => {
-          if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
-            node.textContent = ` ${mod.moduleName} `;
-          }
-        });
-        const strong = card.querySelector(":scope > strong");
-        if (strong) strong.textContent = mod.moduleName;
-        const span = card.querySelector(":scope > span:not(.lounge-social__icon)");
-        if (span && !span.querySelector("svg")) span.textContent = mod.moduleName;
+        grid.append(card);
       });
-    };
-
-    if (mainHeader) updateServiceCards("#services", mainHeader.modules);
-    if (orderHeader) updateServiceCards("#order-online", orderHeader.modules);
-    if (stayHeader) updateSocialCards("#connect-social", stayHeader.modules);
-    const diningHeader = findHeader("DINING");
-    if (diningHeader) updateServiceCards("#dining", diningHeader.modules);
+    });
 
     return undefined;
   }, [path, headerModulesState]);

@@ -10,10 +10,16 @@ export class ApiError extends Error {
   }
 }
 
-function buildQuery(params) {
+function buildQuery(params, includeEmptyParams = []) {
   const search = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
+    if (
+      value !== undefined &&
+      value !== null &&
+      (value !== "" || includeEmptyParams.includes(key))
+    ) {
+      search.set(key, String(value));
+    }
   });
   const query = search.toString();
   return query ? `?${query}` : "";
@@ -62,8 +68,8 @@ async function readJson(response, url) {
   }
 }
 
-async function rawRequest(url, { method = "GET", params, headers, body, signal, timeoutMs }) {
-  const fullUrl = `${url}${buildQuery(params)}`;
+async function rawRequest(url, { method = "GET", params, headers, body, signal, timeoutMs, includeEmptyParams }) {
+  const fullUrl = `${url}${buildQuery(params, includeEmptyParams)}`;
   const { signal: timedSignal, clear } = withTimeout(signal, timeoutMs || DEFAULT_TIMEOUT_MS);
   try {
     const response = await fetch(fullUrl, {

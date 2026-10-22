@@ -1,10 +1,6 @@
 import { apiRequest } from "./apiClient";
 import { API } from "../config/urls";
 
-export const DEFAULT_CARD_CONTEXT = {
-  moduleId: "1ea712e6-147b-4488-ae77-a8fd6d54ebba",
-};
-
 function unwrapCards(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
@@ -121,15 +117,23 @@ export function normalizeCardModule(payload) {
 }
 
 export async function fetchCardModule(context = {}, { signal } = {}) {
+  if (!context.moduleId) {
+    throw new Error("Card module ID is required.");
+  }
+
   const params = {
     companyId: context.companyId,
     branchId: context.branchId,
-    moduleId: context.moduleId || DEFAULT_CARD_CONTEXT.moduleId,
+    moduleId: context.moduleId,
     categoryId: context.categoryId || "",
     search: context.search || "",
     status: context.status || "",
   };
 
-  const payload = await apiRequest(API.upstream.cardModule, { params, signal });
+  const payload = await apiRequest(API.upstream.cardModule, {
+    params,
+    signal,
+    includeEmptyParams: ["categoryId", "search", "status"],
+  });
   return normalizeCardModule(payload);
 }
