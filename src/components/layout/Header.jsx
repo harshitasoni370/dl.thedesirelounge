@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getLoungeNavigation } from '../../config/navigation'
+import { URLS } from '../../config/urls'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -40,18 +42,7 @@ export default function Header() {
     }
   }, [])
 
-  const navLinks = [
-    { label: 'Digital Lounge', href: '/' },
-    { label: 'Board Games', href: '/board-games' },
-    { label: 'PlayStation', href: '/playstation' },
-    { label: 'Menu', href: '/menu' },
-    { label: 'Exclusive Offers', href: '/exclusive-offers' },
-    { label: 'Privilege Membership', href: '/privilege-membership' },
-    { label: 'Birthday Celebrations', href: '/birthday-celebrations' },
-    { label: 'Corporate Bookings', href: '/corporate-bookings' },
-    { label: 'Sunday Brunch', href: '/sunday-brunch' },
-    { label: 'Make It Your Moment', href: '/make-it-your-moment' },
-  ]
+  const navigation = getLoungeNavigation()
 
   return (
     <header className="lounge-header">
@@ -94,15 +85,18 @@ export default function Header() {
       >
         <div className="lounge-drawer__panel">
           <p className="lounge-drawer__title">Explore</p>
-          {navLinks.map(link => (
+          {navigation.explore.map(link => (
             <a key={link.href} href={link.href}>
               {link.label}
             </a>
           ))}
           <hr />
           <p className="lounge-drawer__title">Legal</p>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms & Conditions</a>
+          {navigation.legal.map(link => (
+            <a key={link.href} href={link.href}>
+              {link.label}
+            </a>
+          ))}
         </div>
       </nav>
 

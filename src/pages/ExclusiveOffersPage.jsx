@@ -4,6 +4,8 @@ import { useSelector } from "react-redux";
 import { selectQrContext, selectDeviceId } from "../store/slices/qrContextSlice";
 import { selectPackageModule } from "../store/slices/packageSlice";
 import { MODULE_IDS, URLS } from "../config/urls";
+import { getLoungeNavigation } from "../config/navigation";
+import { getDomainUrl } from "../utils/domainUrls";
 
 const staticOffers = [
   {
@@ -159,8 +161,37 @@ export default function ExclusiveOffersPage({
   const packageModuleState = useSelector(selectPackageModule);
   const [selected, setSelected] = useState(null);
   const [expandedOffers, setExpandedOffers] = useState({});
+  const [menuOpen, setMenuOpen] = useState(false);
   
   const context = getContext(location.search, qrContext, websiteInfo);
+  const websiteHomeUrl = getDomainUrl(websiteInfo, "WEBSITE", URLS.website.home);
+  const getWebsiteUrl = (fallbackUrl) => {
+    const route = new URL(fallbackUrl);
+    return `${websiteHomeUrl}${route.pathname}${route.search}${route.hash}`;
+  };
+  const navigation = getLoungeNavigation({
+    menuAppUrl,
+    websiteHomeUrl,
+    liveSportsUrl: getWebsiteUrl(URLS.website.liveSports),
+    eventsUrl: getWebsiteUrl(URLS.website.events),
+    reserveUrl: getWebsiteUrl(URLS.website.reserve),
+  });
+
+  const handleNavigation = (event, href) => {
+    setMenuOpen(false);
+    const menuBaseUrl = menuAppUrl.replace(/\/+$/, "");
+    if (!href.startsWith(`${menuBaseUrl}/`)) return;
+
+    const target = new URL(href, window.location.origin);
+    new URLSearchParams(location.search).forEach((value, key) => {
+      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
+    });
+    if (deviceId && !target.searchParams.has("deviceId")) {
+      target.searchParams.set("deviceId", deviceId);
+    }
+    event.preventDefault();
+    window.location.assign(target.toString());
+  };
 
   const dynamicOffers = buildOffersFromPackages(packageModuleState?.items);
   const offers = dynamicOffers.length > 0 ? dynamicOffers : staticOffers;
@@ -278,9 +309,40 @@ export default function ExclusiveOffersPage({
           </a>
           <div className="lounge-header__actions">
             <a href="/#services" className="bg-games-back" aria-label="Back to Digital Lounge"><span>Lounge</span></a>
-            <button type="button" className="lounge-header__menu" aria-label="Open menu"><span></span><span></span><span></span></button>
+            <button
+              type="button"
+              className="lounge-header__menu"
+              aria-expanded={menuOpen}
+              aria-controls="lounge-drawer"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span></span><span></span><span></span>
+            </button>
           </div>
         </header>
+        <nav className="lounge-drawer" id="lounge-drawer" aria-label="Primary" hidden={!menuOpen}>
+          <div className="lounge-drawer__panel">
+            <p className="lounge-drawer__title">Explore</p>
+            {navigation.explore.map((link) => (
+              <a key={link.label} href={link.href} onClick={(event) => handleNavigation(event, link.href)}>
+                {link.label}
+              </a>
+            ))}
+            <hr />
+            <p className="lounge-drawer__title">Legal</p>
+            {navigation.legal.map((link) => (
+              <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+        <div
+          className="lounge-drawer__backdrop"
+          hidden={!menuOpen}
+          onClick={() => setMenuOpen(false)}
+        />
         <main id="main" className="lounge-main bg-games-main">
           <article className="offer-sheet"><section className="offer-sheet__panel" aria-labelledby="offers-title">
             <header className="offer-sheet__banner"><span className="lounge-panel__rule" /><h1 id="offers-title">Exclusive Offers</h1><span className="lounge-panel__rule" /></header>

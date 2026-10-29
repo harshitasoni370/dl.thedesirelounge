@@ -10,8 +10,10 @@ import {
   TABLE_OCCUPIED_ERROR,
   QR_SESSION_DEVICE_MISMATCH_ERROR,
   selectDeviceId,
-  selectReturningCustomer,
+  checkDevice,
+  selectCheckDevice,
   selectIsReturningCustomer,
+  selectReturningCustomer,
 } from "./store/slices/qrContextSlice";
 import { fetchGames, selectGames } from "./store/slices/gamesSlice";
 import { fetchCustomMoments, selectCustomMoments } from "./store/slices/customMomentsSlice";
@@ -23,11 +25,14 @@ import { fetchCardModule, selectCardModule } from "./store/slices/cardModuleSlic
 import { fetchPackageModuleItems, selectPackageModule } from "./store/slices/packageSlice";
 import { MODULE_IDS, DEFAULT_COUNTRY_CODE } from "./config/urls";
 import ExclusiveOffersPage from "./pages/ExclusiveOffersPage";
+import FreeWifiPage, { isWifiCredentialsRequired } from "./pages/FreeWifiPage";
+import CallWaiterPage from "./pages/CallWaiterPage";
 import { URLS } from "./config/urls";
 import { getImageUrl } from "./utils/imageUrl";
 import { notifyWhatsApp, buildReservationWhatsAppMessage } from "./utils/whatsapp";
 import { fetchWebsiteByDomainApi } from "./utils/qrApi";
 import { getDomainUrl, getWebsiteDomain } from "./utils/domainUrls";
+import { getLoungeNavigation } from "./config/navigation";
 
 const MENU_APP_URL = URLS.app.menuApp;
 const DEFAULT_CELEBRATION_MODULE_IDS = {
@@ -35,6 +40,8 @@ const DEFAULT_CELEBRATION_MODULE_IDS = {
   corporate: "02ea8929-ad23-47a0-b416-db1d0f33ec46",
 };
 const DEFAULT_MEMBERSHIP_MODULE_ID = "b38fa611-ea6c-4414-9398-fbe6ca1d314c";
+const DEFAULT_WAITER_COMPANY_ID = "0ffbe39e-abf8-4827-9107-1a04b39f3416";
+const DEFAULT_WAITER_BRANCH_ID = "f4fb1d76-83a0-4965-86b5-63da28249dae";
 
 function normalizePath(path) {
   if (!path || path === "/index.html" || path === "/index") return "/";
@@ -363,6 +370,31 @@ function getRequestContext(search, qrContext) {
          resolveParam(search, "tableName") ||
          "",
          
+  };
+}
+
+function getWaiterContext(search, qrContext, websiteInfo) {
+  const data = getActiveQrData(search, qrContext);
+  return {
+    companyId:
+      resolveParam(search, "companyId") ||
+      data.companyId ||
+      websiteInfo?.companyId ||
+      DEFAULT_WAITER_COMPANY_ID,
+    branchId:
+      resolveParam(search, "branchId") ||
+      data.branchId ||
+      websiteInfo?.branchId ||
+      DEFAULT_WAITER_BRANCH_ID,
+    tableId: data.tableId || resolveParam(search, "tableId") || "",
+    tableNumber:
+      data.tableNumber ||
+      data.tableNo ||
+      data.tableName ||
+      resolveParam(search, "tableNumber") ||
+      resolveParam(search, "tableNo") ||
+      resolveParam(search, "tableName") ||
+      "",
   };
 }
 
@@ -775,6 +807,8 @@ export default function App() {
   const qrContextError = useSelector(selectQrContextError);
   const qrContextBlocked = [TABLE_OCCUPIED_ERROR, QR_SESSION_DEVICE_MISMATCH_ERROR].includes(qrContextError);
   const deviceId = useSelector(selectDeviceId);
+  const deviceCheck = useSelector(selectCheckDevice);
+  const isRegisteredCustomer = useSelector(selectIsReturningCustomer);
   const returningCustomer = useSelector(selectReturningCustomer);
   const gamesByType = useSelector(selectGames);
   const customMomentsState = useSelector(selectCustomMoments);
@@ -785,6 +819,7 @@ export default function App() {
   const packageModuleState = useSelector(selectPackageModule);
   const rootRef = useRef(null);
   const themeVariablesRef = useRef([]);
+  const pendingWifiNavigation = useRef(null);
   const [websiteInfo, setWebsiteInfo] = useState(null);
   const [websiteConfigStatus, setWebsiteConfigStatus] = useState("loading");
   const [websiteConfigError, setWebsiteConfigError] = useState("");
@@ -832,6 +867,14 @@ export default function App() {
     if (deviceId) params.set("deviceId", deviceId);
     return `?${params.toString()}`;
   })();
+  const wifiCompanyId =
+    websiteInfo?.companyId ||
+    qrContext?.data?.companyId ||
+    resolveParam(searchWithDevice, "companyId");
+  const wifiDemoMode = import.meta.env.DEV
+    ? new URLSearchParams(location.search).get("wifiDemo") || ""
+    : "";
+  const waiterContext = getWaiterContext(location.search, qrContext, websiteInfo);
   const hasTenantContext = Boolean(
     resolveParam(searchWithDevice, "companyId") && resolveParam(searchWithDevice, "branchId"),
   );
@@ -861,6 +904,59 @@ export default function App() {
   useEffect(() => {
     dispatch(fetchQrContext(location.search));
   }, [location.search]);
+
+  useEffect(() => {
+    if (wifiDemoMode === "credentials") return;
+    if (path !== "/free-wifi" || deviceCheck.status !== "idle") return;
+    const hasQrContextParams = [
+      "tableCode",
+      "type",
+      "location",
+      "name",
+      "resturant",
+      "restaurant",
+      "companyId",
+      "branchId",
+      "tableId",
+      "sessionId",
+    ].some((key) => new URLSearchParams(location.search).has(key));
+    if (hasQrContextParams && !["succeeded", "failed"].includes(qrContextStatus)) return;
+    if (!wifiCompanyId || !deviceId) return;
+    dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
+  }, [path, deviceCheck.status, qrContextStatus, location.search, wifiCompanyId, deviceId, dispatch, wifiDemoMode]);
+
+  useEffect(() => {
+    const pending = pendingWifiNavigation.current;
+    if (!pending || deviceCheck.status === "idle" || deviceCheck.status === "loading") return;
+
+    pendingWifiNavigation.current = null;
+    const shouldShowWifiPage =
+      deviceCheck.status === "succeeded" &&
+      (isRegisteredCustomer || isWifiCredentialsRequired(deviceCheck.data));
+
+    if (deviceCheck.status === "failed") {
+      console.error("Unable to verify guest Wi-Fi requirements:", deviceCheck.error);
+    }
+
+    if (shouldShowWifiPage) {
+      pending.tab?.close();
+      if (pending.isDemo) {
+        const demoParams = new URLSearchParams(searchWithDevice);
+        demoParams.set("wifiDemo", "qr");
+        navigate(`/free-wifi?${demoParams.toString()}`);
+      } else {
+        navigate(`/free-wifi${searchWithDevice}`);
+      }
+      return;
+    }
+
+    if (pending.tab && !pending.tab.closed) {
+      pending.tab.location.replace(pending.href);
+      return;
+    }
+
+    window.location.assign(pending.href);
+  }, [deviceCheck, isRegisteredCustomer, navigate, searchWithDevice]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -943,6 +1039,32 @@ export default function App() {
     const drawer = root.querySelector("#lounge-drawer");
     const backdrop = root.querySelector("#drawer-backdrop");
     const reservationModal = root.querySelector("#reserve-modal");
+    const drawerPanel = drawer?.querySelector(".lounge-drawer__panel");
+    if (drawerPanel) {
+      const navigation = getLoungeNavigation({
+        menuAppUrl,
+        websiteHomeUrl,
+        liveSportsUrl,
+        eventsUrl,
+        reserveUrl: URLS.website.reserve.replace(URLS.website.home, websiteHomeUrl),
+      });
+      drawerPanel.replaceChildren();
+      [
+        { title: "Explore", links: navigation.explore },
+        { title: "Legal", links: navigation.legal },
+      ].forEach(({ title, links }) => {
+        const heading = document.createElement("p");
+        heading.className = "lounge-drawer__title";
+        heading.textContent = title;
+        drawerPanel.append(heading);
+        links.forEach(({ label, href }) => {
+          const link = document.createElement("a");
+          link.href = href;
+          link.textContent = label;
+          drawerPanel.append(link);
+        });
+      });
+    }
 
     const setOpen = (open) => {
       if (!toggle || !drawer) return;
@@ -976,6 +1098,46 @@ export default function App() {
     const onLink = (e) => {
       const link = e.currentTarget;
       let href = link.getAttribute("href");
+      const isWifiLink =
+        link.querySelector("h2")?.textContent?.trim().toLowerCase() === "free wi-fi";
+      if (isWifiLink && import.meta.env.DEV) {
+        e.preventDefault();
+        const tab = window.open("about:blank", "_blank");
+        if (tab) tab.opener = null;
+        pendingWifiNavigation.current = { tab, href, isDemo: true };
+        if (wifiCompanyId && deviceId) {
+          dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
+        }
+        return;
+      }
+      if (isWifiLink && href?.startsWith("https://wa.me/")) {
+        if (deviceCheck.status === "succeeded") {
+          if (isRegisteredCustomer || isWifiCredentialsRequired(deviceCheck.data)) {
+            e.preventDefault();
+            navigate(`/free-wifi${searchWithDevice}`);
+          }
+          return;
+        }
+
+        if (wifiCompanyId && deviceId) {
+          e.preventDefault();
+          const tab = window.open("about:blank", "_blank");
+          if (tab) tab.opener = null;
+          pendingWifiNavigation.current = {
+            tab,
+            href,
+            isDemo: import.meta.env.DEV,
+          };
+          if (deviceCheck.status !== "loading") {
+            dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
+          }
+          return;
+        }
+      }
+      if (link.matches("[data-package-book]") && !link.dataset.packageDetails) {
+        e.preventDefault();
+        return;
+      }
       if (link.matches("[data-package-book]") && link.dataset.packageDetails) {
         e.preventDefault();
         const packageDetails = JSON.parse(link.dataset.packageDetails);
@@ -1157,6 +1319,8 @@ export default function App() {
   qrContext,
   qrContextStatus,
   deviceId,
+  deviceCheck,
+  wifiCompanyId,
   returningCustomer,
   searchWithDevice,
   headerModulesState.items,
@@ -1339,6 +1503,53 @@ export default function App() {
 
   const isMakeMomentPage = path === "/make-it-your-moment";
   const usesMomentCardGrid = isMakeMomentPage;
+
+  useEffect(() => {
+    if (!isMakeMomentPage) return undefined;
+    const root = rootRef.current;
+    const filters = root?.querySelector("#moment-filters");
+    const grid = root?.querySelector("#moment-grid");
+    const count = root?.querySelector("#moment-count");
+    const searchInput = root?.querySelector("#moment-search");
+    if (!filters || !grid) return undefined;
+
+    let activeFilter = "all";
+    let searchQuery = searchInput?.value.trim().toLowerCase() || "";
+    const render = () => {
+      let visibleCount = 0;
+      grid.querySelectorAll(".bg-card").forEach((card) => {
+        const categories = (card.dataset.categories || "").split(/\s+/);
+        const searchText = `${card.dataset.name || ""} ${card.textContent || ""}`.toLowerCase();
+        const matchesFilter = activeFilter === "all" || categories.includes(activeFilter);
+        const matchesSearch = !searchQuery || searchText.includes(searchQuery);
+        card.hidden = !matchesFilter || !matchesSearch;
+        if (!card.hidden) visibleCount += 1;
+      });
+      if (count) count.textContent = `${visibleCount} moment${visibleCount === 1 ? "" : "s"}`;
+    };
+    const onFilter = (event) => {
+      const button = event.target.closest("[data-filter]");
+      if (!button || !filters.contains(button)) return;
+      activeFilter = button.dataset.filter || "all";
+      filters.querySelectorAll("[data-filter]").forEach((item) => {
+        const selected = item === button;
+        item.classList.toggle("is-active", selected);
+        item.setAttribute("aria-pressed", String(selected));
+      });
+      render();
+    };
+    const onSearch = () => {
+      searchQuery = searchInput.value.trim().toLowerCase();
+      render();
+    };
+    filters.addEventListener("click", onFilter);
+    searchInput?.addEventListener("input", onSearch);
+    render();
+    return () => {
+      filters.removeEventListener("click", onFilter);
+      searchInput?.removeEventListener("input", onSearch);
+    };
+  }, [isMakeMomentPage, cardModuleState]);
 
   // 1. Make-It-Your-Moment: OLD customMoments API + render disabled. Ab Card Module use karo.
   useEffect(() => {
@@ -1825,6 +2036,7 @@ export default function App() {
     } else if (path === "/birthday-celebrations" || path === "/corporate-bookings") {
       overrides = { moduleId: urlModuleId || MODULE_IDS.packages };
     }
+
     if (
       !overrides ||
       websiteConfigStatus !== "succeeded" ||
@@ -1946,9 +2158,18 @@ export default function App() {
         const key = normalizeName(moduleName);
         const templateKey = moduleAliases[key] || key;
         const template = templates.get(key) || templates.get(templateKey);
-        const card = template && !usedTemplates.has(template)
+        let card = template && !usedTemplates.has(template)
           ? template
           : template?.cloneNode(true) || document.createElement("div");
+        if (key === "playstation") {
+          if (card.tagName !== "A") {
+            const link = document.createElement("a");
+            link.className = card.className;
+            link.replaceChildren(...card.childNodes);
+            card = link;
+          }
+          card.href = `/playstation${searchWithDevice === "?" ? "" : searchWithDevice}`;
+        }
         if (template) usedTemplates.add(template);
         card.classList.add(kind === "social" ? "lounge-social__item" : "lounge-card");
         card.hidden = Boolean(module.status) && module.status.toUpperCase() !== "ACTIVE";
@@ -2001,7 +2222,7 @@ export default function App() {
     });
 
     return undefined;
-  }, [path, headerModulesState]);
+  }, [path, searchWithDevice, headerModulesState]);
 
   useEffect(() => {
     if (path !== "/menu") return;
@@ -2017,6 +2238,33 @@ export default function App() {
       <div className="lounge-page lounge-page--redirect" role="alert">
         <p>{qrContextError}</p>
       </div>
+    );
+  }
+
+  if (path === "/free-wifi") {
+    return (
+      <FreeWifiPage
+        siteName={siteName}
+        logoUrl={logoUrl}
+        deviceCheck={deviceCheck}
+        companyId={wifiCompanyId}
+        demoMode={wifiDemoMode}
+        isRegisteredCustomer={isRegisteredCustomer}
+      />
+    );
+  }
+
+  if (path === "/call-waiter") {
+    return (
+      <CallWaiterPage
+        siteName={siteName}
+        logoUrl={logoUrl}
+        companyId={waiterContext.companyId}
+        branchId={waiterContext.branchId}
+        tableId={waiterContext.tableId}
+        tableNumber={waiterContext.tableNumber}
+        homeHref={`/${searchWithDevice}`}
+      />
     );
   }
 
@@ -2069,15 +2317,31 @@ export default function App() {
   const pageHtml = `${html}${tenantInfo ? `<footer class="tenant-info">${tenantInfo}</footer>` : ""}`;
 
   return (
-    <div
-      ref={rootRef}
-      className="lounge-page"
-      data-website-url-id={websiteInfo?.websiteUrlId || ""}
-      data-company-id={websiteInfo?.companyId || ""}
-      data-branch-id={websiteInfo?.branchId || ""}
-      data-branch-name={websiteInfo?.branchName || ""}
-      data-timezone={websiteInfo?.timezone || ""}
-      dangerouslySetInnerHTML={{ __html: pageHtml }}
-    />
+    <>
+      <div
+        ref={rootRef}
+        className="lounge-page"
+        data-website-url-id={websiteInfo?.websiteUrlId || ""}
+        data-company-id={websiteInfo?.companyId || ""}
+        data-branch-id={websiteInfo?.branchId || ""}
+        data-branch-name={websiteInfo?.branchName || ""}
+        data-timezone={websiteInfo?.timezone || ""}
+        dangerouslySetInnerHTML={{ __html: pageHtml }}
+      />
+      {path === "/" && (
+        <a className="call-waiter-fab" href={`/call-waiter${searchWithDevice}`}>
+          <span className="call-waiter-fab__icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+              <path d="M10 21h4" />
+            </svg>
+          </span>
+          <span>
+            <strong>Call Waiter</strong>
+            <small>Need assistance?</small>
+          </span>
+        </a>
+      )}
+    </>
   );
 }

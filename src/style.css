@@ -8279,6 +8279,22 @@ body.reserve-modal-open {
     font-size: 0.58rem;
   }
 
+  .offer-page .lounge-header__logo {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .offer-page .lounge-header__logo .logo__copy {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .offer-page .lounge-header__logo .logo__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .lounge-hero__welcome {
     font-size: clamp(1.7rem, 7vw, 2.15rem);
   }
@@ -9617,6 +9633,86 @@ body.bg-modal-open {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
+.free-wifi-panel {
+  max-width: 540px;
+  margin: 2.5rem auto 0;
+}
+
+.free-wifi-message {
+  margin: 0;
+  text-align: center;
+  color: var(--lounge-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.free-wifi-credentials {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.free-wifi-credential {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid var(--lounge-gold-border);
+  border-radius: var(--lounge-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.free-wifi-credential dt {
+  color: var(--lounge-gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.free-wifi-credential dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--lounge-text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.free-wifi-demo {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+}
+
+.free-wifi-demo__qr {
+  width: fit-content;
+  padding: 0.6rem;
+  border-radius: var(--lounge-radius-sm);
+  background: #fff;
+}
+
+.free-wifi-demo__url {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--lounge-muted);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.free-wifi-demo__hint {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--lounge-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.free-wifi-demo__hint code {
+  color: var(--lounge-gold);
+}
+
 .offer-sheet__banner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -10335,5 +10431,303 @@ body.bg-modal-open {
 
   .legal-page .offer-sheet__banner h1 {
     white-space: nowrap;
+  }
+}
+
+/* ---------- Call waiter ---------- */
+.call-waiter-page .bg-games-shell.lounge-shell {
+  width: min(100%, 1320px);
+  --lounge-max: 1320px;
+}
+
+.call-waiter-page .bg-games-main.lounge-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.call-waiter-intro {
+  max-width: 540px;
+  margin: 0.1rem auto 0;
+  text-align: center;
+}
+
+.call-waiter-intro .offer-sheet__tagline {
+  margin-bottom: 0.15rem;
+}
+
+.call-waiter-intro h1 {
+  margin: 0 0 0.45rem;
+  color: var(--lounge-gold);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.call-waiter-intro > p:last-child {
+  max-width: 34rem;
+  margin: 0 auto;
+  color: #eee8df;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.call-waiter-form {
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.call-waiter-form__divider {
+  display: grid;
+  grid-template-columns: minmax(1.5rem, 1fr) auto minmax(1.5rem, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.1rem;
+}
+
+.call-waiter-form__divider h2 {
+  margin: 0;
+  color: var(--lounge-gold);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.13em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.call-waiter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  color: var(--lounge-gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.call-waiter-label > span {
+  display: inline;
+  color: var(--lounge-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.call-waiter-label input,
+.call-waiter-label select,
+.call-waiter-label textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--lounge-gold-border);
+  border-radius: var(--lounge-radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--lounge-text);
+  font-size: 0.9rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  outline: none;
+  text-transform: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.call-waiter-label input:focus,
+.call-waiter-label select:focus,
+.call-waiter-label textarea:focus {
+  border-color: var(--lounge-gold);
+  box-shadow: 0 0 0 3px rgba(201, 162, 75, 0.14);
+}
+
+.call-waiter-label input::placeholder,
+.call-waiter-label select::placeholder,
+.call-waiter-label textarea::placeholder {
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.call-waiter-label textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.call-waiter-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.call-waiter-reasons legend {
+  width: 100%;
+  margin-bottom: 0.1rem;
+}
+
+.call-waiter-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-height: 54px;
+  padding: 0.75rem;
+  border: 1px solid rgba(201, 162, 75, 0.3);
+  border-radius: var(--lounge-radius-sm);
+  background: rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.call-waiter-reason:hover,
+.call-waiter-reason:has(input:checked) {
+  border-color: var(--lounge-gold);
+  background: rgba(201, 162, 75, 0.09);
+}
+
+.call-waiter-reason input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0.05rem 0 0;
+  accent-color: var(--lounge-gold);
+}
+
+.call-waiter-reason input:focus-visible {
+  outline: 2px solid var(--lounge-gold);
+  outline-offset: 3px;
+}
+
+.call-waiter-reason__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  color: var(--lounge-text);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.call-waiter-reason__copy strong {
+  font-weight: 650;
+}
+
+.call-waiter-reason__copy small {
+  color: var(--lounge-muted);
+  font-size: 0.74rem;
+}
+
+.call-waiter-message {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--lounge-radius-sm);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.call-waiter-message--error {
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+}
+
+.call-waiter-message--success {
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  background: rgba(20, 83, 45, 0.25);
+  color: #bbf7d0;
+}
+
+.call-waiter-retry {
+  margin-left: 0.55rem;
+  color: var(--lounge-gold);
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.call-waiter-submit {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 0.05rem;
+  border: 0;
+  cursor: pointer;
+}
+
+.call-waiter-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.call-waiter-fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 54px;
+  padding: 0.55rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e1c36e, #c9a24b);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.42);
+  color: #201707;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.call-waiter-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.call-waiter-fab__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(32, 23, 7, 0.4);
+  border-radius: 50%;
+  font-size: 1rem;
+}
+
+.call-waiter-fab > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.call-waiter-fab strong {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.call-waiter-fab small {
+  font-size: 0.64rem;
+}
+
+.call-waiter-fab:focus-visible,
+.call-waiter-retry:focus-visible {
+  outline: 2px solid var(--lounge-gold);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .call-waiter-page .bg-games-shell.lounge-shell {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .call-waiter-form {
+    padding: 0.9rem 0.75rem;
+  }
+
+  .call-waiter-fab {
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 }

@@ -422,6 +422,10 @@ function normalizeDob(raw) {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : s.split(" ")[0] || null;
 }
 
+function readBoolean(value) {
+  return value === true || value === 1 || String(value).trim().toLowerCase() === "true";
+}
+
 function extractDevicePayload(state) {
   const device = state.qrContext?.device;
   const raw = device?.data;
@@ -430,7 +434,7 @@ function extractDevicePayload(state) {
   if (!inner || typeof inner !== "object") return null;
   return {
     ...inner,
-    isReturning: Boolean(inner.isReturning ?? inner.IsReturning),
+    isReturning: readBoolean(inner.isReturning ?? inner.IsReturning),
     customerId: inner.customerId || inner.CustomerId || null,
     firstName: inner.firstName || inner.FirstName || "",
     lastName: inner.lastName || inner.LastName || "",

@@ -63,10 +63,13 @@ export default defineConfig(({ command, mode }) => {
   assertEnv(env);
   const domainApiBase = new URL(
     env.VITE_DOMAIN_API_BASE_URL || 
-    // "https://fumesandflavoursapi.cylsysuat.com/api",
        "https://restaurents-api.cylsys.com/api",
   );
   const domainApiPath = domainApiBase.pathname.replace(/\/+$/, "");
+  const waiterApiBase = new URL(
+    env.VITE_API_BASE_URL,
+  );
+  const waiterApiProxyBase = env.VITE_WAITER_API_PROXY_BASE || "/waiter-api";
 
   const appEnv = env.VITE_APP_ENV || detectEnv(env.VITE_API_BASE_URL);
 
@@ -100,6 +103,16 @@ export default defineConfig(({ command, mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/domain-api/, domainApiPath),
+        },
+        [waiterApiProxyBase]: {
+          target: waiterApiBase.origin,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) =>
+            path.replace(
+              new RegExp(`^${waiterApiProxyBase}`),
+              waiterApiBase.pathname.replace(/\/+$/, ""),
+            ),
         },
         [env.VITE_API_PROXY_BASE || "/api"]: {
           target: env.VITE_API_BASE_URL,

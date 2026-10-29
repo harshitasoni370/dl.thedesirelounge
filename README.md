@@ -63,6 +63,7 @@ npm run package
 ## Environment variables
 
 - `VITE_API_BASE_URL`: upstream API base URL, including `/api`.
+- Call-waiter endpoints use `VITE_API_BASE_URL`, so UAT/production switches apply to them too.
 - `VITE_DOMAIN_API_BASE_URL`: domain/QR API base used by the Vite development proxy (defaults to the UAT API).
 - `VITE_WEBSITE_DOMAIN`: optional domain override for localhost preview only. Live deployments always use the current hostname so multiple domains can share the same build.
 - `DOMAIN_API_BASE_URL`: optional runtime override for the packaged Node server's domain/QR API proxy.

@@ -24,9 +24,13 @@ const DOMAIN_API_PROXY_BASE = "/domain-api";
 const UPSTREAM_BASE = import.meta.env.DEV
   ? (import.meta.env.VITE_API_PROXY_BASE || "/api").replace(/\/+$/, "")
   : CONFIGURED_API_BASE;
+const WAITER_API_BASE = import.meta.env.DEV
+  ? (import.meta.env.VITE_WAITER_API_PROXY_BASE || "/waiter-api").replace(/\/+$/, "")
+  : CONFIGURED_API_BASE;
 
 export const API = {
   upstreamBase: UPSTREAM_BASE,
+  waiterBase: WAITER_API_BASE,
   upstream: {
     websiteByDomain: `${DOMAIN_API_PROXY_BASE}/WebsiteUrl/by-domain`,
     qrContext: `${DOMAIN_API_PROXY_BASE}/QR/qrcontext`,
@@ -42,6 +46,11 @@ export const API = {
     headerModules: `${UPSTREAM_BASE}/Modules/GetHeadreModules`,
     cardModule: `${UPSTREAM_BASE}/CardModule/GetCardModule`,
     packageModuleItems: `${UPSTREAM_BASE}/Package/GetPackageModuleItems`,
+  },
+  waiter: {
+    types: `${WAITER_API_BASE}/Waiter/Types`,
+    create: `${WAITER_API_BASE}/Waiter/Create`,
+    tables: `${WAITER_API_BASE}/Table/GetTableList`,
   },
 };
 
