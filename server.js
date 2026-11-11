@@ -20,6 +20,10 @@ const DOMAIN_API_BASE = (
   process.env.VITE_DOMAIN_API_BASE_URL ||
   "https://restaurents-api.cylsys.com/api"
 ).replace(/\/+$/, "");
+const API_BASE = (
+  process.env.API_BASE_URL ||
+  DOMAIN_API_BASE
+).replace(/\/+$/, "");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -51,6 +55,12 @@ function sendFile(res, filePath, { immutable = false } = {}) {
   fs.createReadStream(filePath).pipe(res);
 }
 
+async function readRequestBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(url.pathname);
@@ -58,21 +68,32 @@ const server = http.createServer(async (req, res) => {
   const domainApiRoutes = new Map([
     ["/domain-api/WebsiteUrl/by-domain", "/WebsiteUrl/by-domain"],
     ["/domain-api/QR/qrcontext", "/QR/qrcontext"],
+    ["/domain-api/QR/checkDevice", "/QR/checkDevice"],
   ]);
   const domainApiPath = domainApiRoutes.get(pathname);
   if (domainApiPath) {
-    if (req.method !== "GET") {
+    const allowedMethods = domainApiPath === "/QR/checkDevice" ? ["POST"] : ["GET"];
+    if (!allowedMethods.includes(req.method)) {
       res.statusCode = 405;
-      res.setHeader("Allow", "GET");
+      res.setHeader("Allow", allowedMethods.join(", "));
       res.end("Method not allowed");
       return;
     }
 
     try {
-      const upstreamUrl = new URL(`${DOMAIN_API_BASE}${domainApiPath}`);
+      const apiBase = domainApiPath === "/QR/checkDevice" ? API_BASE : DOMAIN_API_BASE;
+      const upstreamUrl = new URL(`${apiBase}${domainApiPath}`);
       upstreamUrl.search = url.search;
+      const body = req.method === "POST" ? await readRequestBody(req) : undefined;
       const upstreamResponse = await fetch(upstreamUrl, {
-        headers: { Accept: "application/json" },
+        method: req.method,
+        headers: {
+          Accept: "application/json",
+          ...(req.headers["content-type"]
+            ? { "Content-Type": req.headers["content-type"] }
+            : {}),
+        },
+        body,
       });
       res.statusCode = upstreamResponse.status;
       res.setHeader(

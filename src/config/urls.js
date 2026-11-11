@@ -34,7 +34,7 @@ export const API = {
   upstream: {
     websiteByDomain: `${DOMAIN_API_PROXY_BASE}/WebsiteUrl/by-domain`,
     qrContext: `${DOMAIN_API_PROXY_BASE}/QR/qrcontext`,
-    qrCheckDevice: `${UPSTREAM_BASE}/QR/checkDevice`,
+    qrCheckDevice: `${import.meta.env.DEV ? UPSTREAM_BASE : DOMAIN_API_PROXY_BASE}/QR/checkDevice`,
     playstationGames: `${UPSTREAM_BASE}/Playstation/Playstationgamelist`,
     boardGames: `${UPSTREAM_BASE}/BoardGame/Boardgamelist`,
     customMoments: `${UPSTREAM_BASE}/CustomMoment/GetCustomMoments`,

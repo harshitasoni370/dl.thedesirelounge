@@ -7,11 +7,16 @@ function getCardContext(search, qrContext, overrides = {}) {
   return {
     companyId: params.get("companyId") || params.get("cid") || data.companyId || "",
     branchId: params.get("branchId") || params.get("bid") || data.branchId || "",
-    moduleId: params.get("moduleId") || overrides.moduleId || "",
+    moduleId: overrides.moduleId || params.get("moduleId") || "",
     categoryId: overrides.categoryId || params.get("categoryId") || "",
     search: overrides.search || params.get("cardSearch") || "",
     status: overrides.status || "",
   };
+}
+
+function getRequestedModuleId(arg = {}) {
+  const params = new URLSearchParams(arg.search || "");
+  return arg.overrides?.moduleId || params.get("moduleId") || "";
 }
 
 const MODULE_CACHE_KEY = (c) =>
@@ -22,30 +27,53 @@ export const fetchCardModule = createAsyncThunk(
   async ({ search, qrContext, overrides }, { signal }) => {
     const context = getCardContext(search, qrContext, overrides || {});
     const items = await fetchCardModuleApi(context, { signal });
-    return { key: MODULE_CACHE_KEY(context), items };
+    return { key: MODULE_CACHE_KEY(context), moduleId: context.moduleId, items };
   },
-  { condition: (arg, { getState }) => getState().cardModule.status !== "loading" },
+  {
+    condition: (arg, { getState }) => {
+      const state = getState().cardModule;
+      return state.status !== "loading" || state.moduleId !== getRequestedModuleId(arg);
+    },
+  },
 );
 
 const cardModuleSlice = createSlice({
   name: "cardModule",
-  initialState: { items: [], status: "idle", error: null, key: null },
+  initialState: {
+    items: [],
+    status: "idle",
+    error: null,
+    key: null,
+    moduleId: null,
+    requestId: null,
+  },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchCardModule.pending, (state) => {
+      .addCase(fetchCardModule.pending, (state, action) => {
         state.status = "loading";
         state.error = null;
+        state.moduleId = getRequestedModuleId(action.meta.arg);
+        state.requestId = action.meta.requestId;
       })
       .addCase(fetchCardModule.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.items = action.payload.items;
         state.key = action.payload.key;
+        state.moduleId = action.payload.moduleId;
         state.status = "succeeded";
+        state.requestId = null;
       })
       .addCase(fetchCardModule.rejected, (state, action) => {
-        if (action.error.name === "AbortError") return;
+        if (state.requestId !== action.meta.requestId) return;
+        if (action.error.name === "AbortError") {
+          state.status = "idle";
+          state.requestId = null;
+          return;
+        }
         state.status = "failed";
         state.error = action.error.message;
+        state.requestId = null;
       });
   },
 });

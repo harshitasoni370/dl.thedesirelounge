@@ -15,6 +15,16 @@ function getPackageContext(search, qrContext, overrides = {}) {
   };
 }
 
+function getRequestedModuleId(arg = {}) {
+  const params = new URLSearchParams(arg.search || "");
+  return (
+    params.get("packageModuleId") ||
+    params.get("moduleId") ||
+    arg.overrides?.moduleId ||
+    DEFAULT_PACKAGE_CONTEXT.moduleId
+  );
+}
+
 export const fetchPackageModuleItems = createAsyncThunk(
   "packageModule/fetch",
   async ({ search, qrContext, overrides }, { signal }) => {
@@ -22,28 +32,43 @@ export const fetchPackageModuleItems = createAsyncThunk(
     const items = await fetchPackageModuleItemsApi(context, { signal });
     return { moduleId: context.moduleId, items };
   },
-  { condition: (_arg, { getState }) => getState().packageModule.status !== "loading" },
+  {
+    condition: (arg, { getState }) => {
+      const state = getState().packageModule;
+      return state.status !== "loading" || state.moduleId !== getRequestedModuleId(arg);
+    },
+  },
 );
 
 const packageModuleSlice = createSlice({
   name: "packageModule",
-  initialState: { items: [], status: "idle", error: null, moduleId: null },
+  initialState: { items: [], status: "idle", error: null, moduleId: null, requestId: null },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchPackageModuleItems.pending, (state) => {
+      .addCase(fetchPackageModuleItems.pending, (state, action) => {
         state.status = "loading";
         state.error = null;
+        state.moduleId = getRequestedModuleId(action.meta.arg);
+        state.requestId = action.meta.requestId;
       })
       .addCase(fetchPackageModuleItems.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
         state.items = action.payload.items;
         state.moduleId = action.payload.moduleId;
         state.status = "succeeded";
+        state.requestId = null;
       })
       .addCase(fetchPackageModuleItems.rejected, (state, action) => {
-        if (action.error.name === "AbortError") return;
+        if (state.requestId !== action.meta.requestId) return;
+        if (action.error.name === "AbortError") {
+          state.status = "idle";
+          state.requestId = null;
+          return;
+        }
         state.status = "failed";
         state.error = action.error.message;
+        state.requestId = null;
       });
   },
 });

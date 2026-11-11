@@ -57,24 +57,20 @@ export default function FreeWifiPage({
 }) {
   const isDemoCredentials = demoMode === "credentials";
   const isDemoQrRequested = demoMode === "qr";
-  const isDemoQr = isDemoQrRequested && isRegisteredCustomer;
-  const isDemoQrLoading =
-    isDemoQrRequested &&
-    !isRegisteredCustomer &&
-    (deviceCheck.status === "idle" || deviceCheck.status === "loading");
   const credentials = isDemoCredentials
     ? { username: "demo-wifi-user", password: "demo-wifi-pass123" }
     : getWifiCredentials(deviceCheck.data);
   const isRequired = isWifiCredentialsRequired(deviceCheck.data);
+  const isDemoQr =
+    !isDemoCredentials &&
+    deviceCheck.status === "succeeded" &&
+    isRegisteredCustomer;
   const isLoading =
-    isDemoQrLoading ||
-    (
     !isDemoCredentials &&
     !isDemoQr &&
     !isDemoQrRequested &&
     (deviceCheck.status === "loading" ||
-      (deviceCheck.status === "idle" && Boolean(companyId)))
-    );
+      (deviceCheck.status === "idle" && Boolean(companyId)));
   const hasCredentials = Boolean(credentials.username || credentials.password);
   const demoQrUrl = (() => {
     const qrUrl = new URL(
@@ -139,9 +135,9 @@ export default function FreeWifiPage({
                       title="Demo Wi-Fi credentials QR code"
                     />
                   </div>
-                  <p className="free-wifi-demo__url">{demoQrUrl}</p>
+                  {/* <p className="free-wifi-demo__url">{demoQrUrl}</p> */}
                   <a className="offer-sheet__cta" href={demoQrUrl}>
-                    Open demo credentials
+                    Open credentials
                   </a>
                   {/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(demoQrUrl) && (
                     <p className="free-wifi-demo__hint">
@@ -154,7 +150,7 @@ export default function FreeWifiPage({
               ) : isDemoCredentials ? (
                 <>
                   <p className="free-wifi-message">
-                    Demo credentials shown after scanning the QR code. These are sample details only.
+                   credentials shown after scanning the QR code. These are sample details only.
                   </p>
                   <dl className="free-wifi-credentials">
                     <div className="free-wifi-credential">
@@ -183,7 +179,7 @@ export default function FreeWifiPage({
                 <p className="free-wifi-message" role="alert">
                   We couldn’t verify your Wi-Fi access right now. Please try again or ask our team.
                 </p>
-              ) : !isRequired ? (
+              ) : !isRequired && !isRegisteredCustomer ? (
                 <p className="free-wifi-message" role="status">
                   Wi-Fi details are not available for this device. Please ask our team for help.
                 </p>

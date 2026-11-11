@@ -25,7 +25,7 @@ import { fetchCardModule, selectCardModule } from "./store/slices/cardModuleSlic
 import { fetchPackageModuleItems, selectPackageModule } from "./store/slices/packageSlice";
 import { MODULE_IDS, DEFAULT_COUNTRY_CODE } from "./config/urls";
 import ExclusiveOffersPage from "./pages/ExclusiveOffersPage";
-import FreeWifiPage, { isWifiCredentialsRequired } from "./pages/FreeWifiPage";
+import FreeWifiPage from "./pages/FreeWifiPage";
 import CallWaiterPage from "./pages/CallWaiterPage";
 import { URLS } from "./config/urls";
 import { getImageUrl } from "./utils/imageUrl";
@@ -33,6 +33,12 @@ import { notifyWhatsApp, buildReservationWhatsAppMessage } from "./utils/whatsap
 import { fetchWebsiteByDomainApi } from "./utils/qrApi";
 import { getDomainUrl, getWebsiteDomain } from "./utils/domainUrls";
 import { getLoungeNavigation } from "./config/navigation";
+import {
+  buildModulePageHref,
+  getModuleContentType,
+  getStaticModulePath,
+} from "./utils/moduleRouting";
+import DynamicModulePage from "./pages/DynamicModulePage";
 
 const MENU_APP_URL = URLS.app.menuApp;
 const DEFAULT_CELEBRATION_MODULE_IDS = {
@@ -40,15 +46,19 @@ const DEFAULT_CELEBRATION_MODULE_IDS = {
   corporate: "02ea8929-ad23-47a0-b416-db1d0f33ec46",
 };
 const DEFAULT_MEMBERSHIP_MODULE_ID = "b38fa611-ea6c-4414-9398-fbe6ca1d314c";
-const DEFAULT_WAITER_COMPANY_ID = "0ffbe39e-abf8-4827-9107-1a04b39f3416";
-const DEFAULT_WAITER_BRANCH_ID = "f4fb1d76-83a0-4965-86b5-63da28249dae";
 
 function normalizePath(path) {
   if (!path || path === "/index.html" || path === "/index") return "/";
   if (path === "/events.html" || path === "/events") return "/sunday-brunch";
   if (path === "/live-sports.html" || path === "/live-sports") return "/";
   if (path === "/gallery.html" || path === "/gallery" || path === "/about.html" || path === "/about") return "/";
-  return path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
+  const normalizedPath = path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
+  const moduleRoute = normalizedPath.match(/^\/module\/(?:detail|card|package)\/([^/]+)$/);
+  if (moduleRoute) {
+    const staticPath = getStaticModulePath(moduleRoute[1].replace(/-/g, " "));
+    if (staticPath) return staticPath;
+  }
+  return normalizedPath;
 }
 
 function buildMenuUrl(search, qrContext, pathname = "/", deviceId, menuAppUrl = MENU_APP_URL) {
@@ -157,13 +167,23 @@ function getExtraDetails(search) {
 function getModuleIdByName(headers, moduleName) {
   if (!Array.isArray(headers) || !moduleName) return "";
 
-  const normalizedName = moduleName.trim().toLowerCase();
+  const normalizeModuleName = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  const requestedName = normalizeModuleName(moduleName);
 
   for (const header of headers) {
     const module = (header.modules || []).find(
-      (item) =>
-        item.moduleName?.trim().toLowerCase() === normalizedName &&
-        item.status?.toUpperCase() === "ACTIVE"
+      (item) => {
+        const apiName = normalizeModuleName(item.moduleName);
+        const matchesName =
+          apiName === requestedName ||
+          `${apiName}s` === requestedName ||
+          `${requestedName}s` === apiName;
+        return matchesName && item.status?.toUpperCase() === "ACTIVE";
+      },
     );
 
     if (module?.uidModuleId) {
@@ -373,31 +393,6 @@ function getRequestContext(search, qrContext) {
   };
 }
 
-function getWaiterContext(search, qrContext, websiteInfo) {
-  const data = getActiveQrData(search, qrContext);
-  return {
-    companyId:
-      resolveParam(search, "companyId") ||
-      data.companyId ||
-      websiteInfo?.companyId ||
-      DEFAULT_WAITER_COMPANY_ID,
-    branchId:
-      resolveParam(search, "branchId") ||
-      data.branchId ||
-      websiteInfo?.branchId ||
-      DEFAULT_WAITER_BRANCH_ID,
-    tableId: data.tableId || resolveParam(search, "tableId") || "",
-    tableNumber:
-      data.tableNumber ||
-      data.tableNo ||
-      data.tableName ||
-      resolveParam(search, "tableNumber") ||
-      resolveParam(search, "tableNo") ||
-      resolveParam(search, "tableName") ||
-      "",
-  };
-}
-
 function getCustomMomentContext(search, qrContext) {
   const data = getActiveQrData(search, qrContext);
   return {
@@ -485,7 +480,10 @@ function openReservation(
   deviceId,
   headerModules = [],
   returningCustomer = null,
-  menuAppUrl = MENU_APP_URL
+  menuAppUrl = MENU_APP_URL,
+  specialRequest = "",
+  reservationTitle = "",
+  reservationDetails = null,
 ) {
   const ctx = getRequestContext(search, qrContext);
 
@@ -494,8 +492,8 @@ function openReservation(
     "Reserve a Table"
   );
 
-  const cat = getReservationCategory(path);
-  const title = getReservationTitle(cat);
+  const cat = reservationDetails?.category || getReservationCategory(path);
+  const title = reservationTitle.trim() || getReservationTitle(cat);
 
   const out = new URLSearchParams();
 
@@ -511,24 +509,42 @@ function openReservation(
     out.set("sid", ctx.tableSessionId);
   }
 
-  out.set(
-    "mid",
-    reservationModuleId ||
-      resolveParam(search, "moduleId") ||
-      ctx.moduleId ||
-      ""
-  );
+  if (cat !== "CALL_WAITER") {
+    out.set(
+      "mid",
+      reservationModuleId ||
+        resolveParam(search, "moduleId") ||
+        ctx.moduleId ||
+        ""
+    );
+  }
 
   out.set("cat", cat);
   out.set("rc", cat);
   out.set("rt", title);
   out.set("bt", title);
+  if (reservationDetails?.selectedItem?.id) {
+    out.set("gid", reservationDetails.selectedItem.id);
+  }
+  if (reservationDetails?.selectedItem?.name) {
+    out.set("gn", reservationDetails.selectedItem.name);
+  }
+  if (reservationDetails?.categoryName) {
+    out.set("cn", reservationDetails.categoryName);
+  }
+  if (reservationDetails) {
+    out.set("xd", JSON.stringify(reservationDetails));
+  }
   out.set("s", "about-you");
   out.set("hs", "1");
   out.set("hc", "1");
 
   if (deviceId) {
     out.set("did", deviceId);
+  }
+
+  if (specialRequest.trim()) {
+    out.set("sr", specialRequest.trim());
   }
 
   appendReturningParams(out, returningCustomer);
@@ -540,6 +556,33 @@ function openReservation(
   );
 
   setOpen(false);
+}
+
+function redirectToReservationPage(
+  search,
+  path,
+  qrContext,
+  deviceId,
+  headerModules,
+  returningCustomer,
+  menuAppUrl,
+  specialRequest,
+  reservationTitle,
+  reservationDetails,
+) {
+  openReservation(
+    search,
+    path,
+    qrContext,
+    () => {},
+    deviceId,
+    headerModules,
+    returningCustomer,
+    menuAppUrl,
+    specialRequest,
+    reservationTitle,
+    reservationDetails,
+  );
 }
 
 function setInputValueByName(form, name, value) {
@@ -798,7 +841,47 @@ function renderGamesGrid(root, type, gameState, search, qrContext, deviceId, ret
   };
 }
 
-export default function App() {
+function CallWaiterFab() {
+  const location = useLocation();
+  const qrContext = useSelector(selectQrContext);
+  const deviceId = useSelector(selectDeviceId);
+  const params = new URLSearchParams(location.search);
+  const qrData = getActiveQrData(location.search, qrContext);
+  const companyId = qrData.companyId || params.get("companyId") || params.get("cid");
+  const branchId = qrData.branchId || params.get("branchId") || params.get("bid");
+
+  params.delete("cid");
+  params.delete("bid");
+  if (companyId) params.set("companyId", companyId);
+  if (branchId) params.set("branchId", branchId);
+  if (deviceId) params.set("deviceId", deviceId);
+
+  if (!isQrEntry(location.search) || normalizePath(location.pathname) === "/call-waiter") {
+    return null;
+  }
+
+  const query = params.toString();
+  return (
+    <a
+      className="call-waiter-fab"
+      href={`/call-waiter${query ? `?${query}` : ""}`}
+      aria-label="Call waiter for assistance"
+    >
+      <span className="call-waiter-fab__icon" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M10 21h4" />
+        </svg>
+      </span>
+      <span>
+        <strong>Call Waiter</strong>
+        <small>Need assistance?</small>
+      </span>
+    </a>
+  );
+}
+
+function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -820,12 +903,26 @@ export default function App() {
   const rootRef = useRef(null);
   const themeVariablesRef = useRef([]);
   const pendingWifiNavigation = useRef(null);
+  const wifiCheckKey = useRef(null);
+  const wifiCheckInFlight = useRef(false);
   const [websiteInfo, setWebsiteInfo] = useState(null);
   const [websiteConfigStatus, setWebsiteConfigStatus] = useState("loading");
   const [websiteConfigError, setWebsiteConfigError] = useState("");
   const [websiteConfigRetry, setWebsiteConfigRetry] = useState(0);
   const [websiteConfigDomain, setWebsiteConfigDomain] = useState("");
   const path = normalizePath(location.pathname);
+  const isDynamicModulePage = path.startsWith("/module/");
+  const moduleRouteType = isDynamicModulePage ? path.split("/")[2] : "";
+  const moduleQuery = new URLSearchParams(location.search);
+  const moduleContentType = ["card", "package"].includes(moduleRouteType)
+    ? moduleRouteType
+    : getModuleContentType(moduleQuery.get("moduleType"));
+  const dynamicModuleId =
+    moduleQuery.get("packageModuleId") ||
+    moduleQuery.get("moduleId") ||
+    "";
+  const dynamicModuleName = moduleQuery.get("moduleName") || "";
+  const dynamicModuleSubtitle = moduleQuery.get("moduleSubtitle") || "";
   const menuAppUrl = useMemo(
     () => getDomainUrl(websiteInfo, "APP", URLS.app.menuApp),
     [websiteInfo],
@@ -837,6 +934,7 @@ export default function App() {
   const liveSportsUrl = import.meta.env.VITE_LIVE_SPORTS_URL || `${websiteHomeUrl}/live-sports`;
   const eventsUrl = import.meta.env.VITE_EVENTS_URL || `${websiteHomeUrl}/events`;
   const websiteDomain = getWebsiteDomain();
+  const hasWebsiteConfig = websiteConfigDomain === websiteDomain;
   const siteName = websiteInfo?.siteName?.trim();
   const logoUrl = websiteInfo?.logoUrl ? getImageUrl(websiteInfo.logoUrl) : "";
   const escapedSiteName = escapeHtml(siteName || "");
@@ -871,10 +969,15 @@ export default function App() {
     websiteInfo?.companyId ||
     qrContext?.data?.companyId ||
     resolveParam(searchWithDevice, "companyId");
-  const wifiDemoMode = import.meta.env.DEV
-    ? new URLSearchParams(location.search).get("wifiDemo") || ""
-    : "";
-  const waiterContext = getWaiterContext(location.search, qrContext, websiteInfo);
+  const wifiDemoMode = new URLSearchParams(location.search).get("wifiDemo") || "";
+  const wifiReservationDetails = {
+    id: "free-wifi",
+    name: "Free Wi-Fi",
+    type: "free-wifi",
+    categoryName: "Free Wi-Fi",
+    category: "FREE_WIFI",
+    bookingType: "Free Wi-Fi",
+  };
   const hasTenantContext = Boolean(
     resolveParam(searchWithDevice, "companyId") && resolveParam(searchWithDevice, "branchId"),
   );
@@ -906,24 +1009,73 @@ export default function App() {
   }, [location.search]);
 
   useEffect(() => {
-    if (wifiDemoMode === "credentials") return;
-    if (path !== "/free-wifi" || deviceCheck.status !== "idle") return;
-    const hasQrContextParams = [
-      "tableCode",
-      "type",
-      "location",
-      "name",
-      "resturant",
-      "restaurant",
-      "companyId",
-      "branchId",
-      "tableId",
-      "sessionId",
-    ].some((key) => new URLSearchParams(location.search).has(key));
-    if (hasQrContextParams && !["succeeded", "failed"].includes(qrContextStatus)) return;
+    if (wifiDemoMode === "credentials") {
+      wifiCheckInFlight.current = false;
+      return;
+    }
     if (!wifiCompanyId || !deviceId) return;
+
+    if (path === "/free-wifi") {
+      const requestKey = `${deviceId}:${wifiCompanyId}`;
+      if (wifiCheckKey.current === requestKey || deviceCheck.status === "loading") return;
+      wifiCheckKey.current = requestKey;
+      wifiCheckInFlight.current = true;
+      dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
+      return;
+    }
+
+    wifiCheckKey.current = null;
+    if (deviceCheck.status !== "idle") return;
     dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
-  }, [path, deviceCheck.status, qrContextStatus, location.search, wifiCompanyId, deviceId, dispatch, wifiDemoMode]);
+  }, [deviceCheck.status, deviceId, dispatch, path, wifiCompanyId, wifiDemoMode]);
+
+  useEffect(() => {
+    if (
+      path === "/free-wifi" &&
+      deviceCheck.status !== "loading" &&
+      wifiCheckInFlight.current
+    ) {
+      wifiCheckInFlight.current = false;
+    }
+  }, [deviceCheck.status, path]);
+
+  useEffect(() => {
+    if (
+      path !== "/free-wifi" ||
+      wifiDemoMode === "credentials" ||
+      wifiDemoMode === "qr" ||
+      pendingWifiNavigation.current ||
+      wifiCheckInFlight.current ||
+      deviceCheck.status !== "succeeded" ||
+      isRegisteredCustomer
+    ) {
+      return;
+    }
+
+    redirectToReservationPage(
+      searchWithDevice,
+      path,
+      qrContext,
+      deviceId,
+      headerModulesState.items,
+      returningCustomer,
+      menuAppUrl,
+      "Free Wi-Fi access requested.",
+      "Free Wi-Fi",
+      wifiReservationDetails,
+    );
+  }, [
+    deviceCheck.status,
+    deviceId,
+    headerModulesState.items,
+    isRegisteredCustomer,
+    menuAppUrl,
+    path,
+    qrContext,
+    returningCustomer,
+    searchWithDevice,
+    wifiDemoMode,
+  ]);
 
   useEffect(() => {
     const pending = pendingWifiNavigation.current;
@@ -932,7 +1084,7 @@ export default function App() {
     pendingWifiNavigation.current = null;
     const shouldShowWifiPage =
       deviceCheck.status === "succeeded" &&
-      (isRegisteredCustomer || isWifiCredentialsRequired(deviceCheck.data));
+      isRegisteredCustomer;
 
     if (deviceCheck.status === "failed") {
       console.error("Unable to verify guest Wi-Fi requirements:", deviceCheck.error);
@@ -940,13 +1092,24 @@ export default function App() {
 
     if (shouldShowWifiPage) {
       pending.tab?.close();
-      if (pending.isDemo) {
-        const demoParams = new URLSearchParams(searchWithDevice);
-        demoParams.set("wifiDemo", "qr");
-        navigate(`/free-wifi?${demoParams.toString()}`);
-      } else {
-        navigate(`/free-wifi${searchWithDevice}`);
-      }
+      navigate(`/free-wifi${searchWithDevice}`);
+      return;
+    }
+
+    if (deviceCheck.status === "succeeded") {
+      pending.tab?.close();
+      redirectToReservationPage(
+        searchWithDevice,
+        path,
+        qrContext,
+        deviceId,
+        headerModulesState.items,
+        returningCustomer,
+        menuAppUrl,
+        "Free Wi-Fi access requested.",
+        "Free Wi-Fi",
+        wifiReservationDetails,
+      );
       return;
     }
 
@@ -956,7 +1119,18 @@ export default function App() {
     }
 
     window.location.assign(pending.href);
-  }, [deviceCheck, isRegisteredCustomer, navigate, searchWithDevice]);
+  }, [
+    deviceCheck,
+    deviceId,
+    headerModulesState.items,
+    isRegisteredCustomer,
+    menuAppUrl,
+    navigate,
+    path,
+    qrContext,
+    returningCustomer,
+    searchWithDevice,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1047,6 +1221,8 @@ export default function App() {
         liveSportsUrl,
         eventsUrl,
         reserveUrl: URLS.website.reserve.replace(URLS.website.home, websiteHomeUrl),
+        headerModules: headerModulesState.items,
+        search: searchWithDevice,
       });
       drawerPanel.replaceChildren();
       [
@@ -1100,39 +1276,22 @@ export default function App() {
       let href = link.getAttribute("href");
       const isWifiLink =
         link.querySelector("h2")?.textContent?.trim().toLowerCase() === "free wi-fi";
-      if (isWifiLink && import.meta.env.DEV) {
-        e.preventDefault();
-        const tab = window.open("about:blank", "_blank");
-        if (tab) tab.opener = null;
-        pendingWifiNavigation.current = { tab, href, isDemo: true };
-        if (wifiCompanyId && deviceId) {
-          dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
-        }
-        return;
-      }
       if (isWifiLink && href?.startsWith("https://wa.me/")) {
-        if (deviceCheck.status === "succeeded") {
-          if (isRegisteredCustomer || isWifiCredentialsRequired(deviceCheck.data)) {
-            e.preventDefault();
-            navigate(`/free-wifi${searchWithDevice}`);
-          }
+        e.preventDefault();
+        if (!wifiCompanyId || !deviceId) {
+          window.location.assign(href);
           return;
         }
 
-        if (wifiCompanyId && deviceId) {
-          e.preventDefault();
-          const tab = window.open("about:blank", "_blank");
-          if (tab) tab.opener = null;
-          pendingWifiNavigation.current = {
-            tab,
-            href,
-            isDemo: import.meta.env.DEV,
-          };
-          if (deviceCheck.status !== "loading") {
-            dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
-          }
-          return;
+        const tab = window.open("about:blank", "_blank");
+        if (tab) tab.opener = null;
+        pendingWifiNavigation.current = { tab, href };
+        if (deviceCheck.status !== "loading") {
+          wifiCheckKey.current = `${deviceId}:${wifiCompanyId}`;
+          wifiCheckInFlight.current = true;
+          dispatch(checkDevice({ deviceId, companyId: wifiCompanyId }));
         }
+        return;
       }
       if (link.matches("[data-package-book]") && !link.dataset.packageDetails) {
         e.preventDefault();
@@ -1444,8 +1603,9 @@ export default function App() {
       });
       const moduleName = pageMode === "playstation" ? "Playstation" : "Board Games";
       const moduleId =
+        getModuleIdByName(headerModulesState.items, moduleName) ||
         new URLSearchParams(searchWithDevice).get("moduleId") ||
-        getModuleIdByName(headerModulesState.items, moduleName);
+        "";
       grid.innerHTML = renderGameCards(
         visible,
         pageMode,
@@ -1978,15 +2138,18 @@ export default function App() {
   }, [path, searchWithDevice, qrContext]);
 
   useEffect(() => {
-    if (
-      ![
+    const shouldLoadHeaderModules =
+      [
         "/",
         "/playstation",
         "/board-games",
+        "/call-waiter",
         "/make-it-your-moment",
         "/birthday-celebrations",
         "/corporate-bookings",
-      ].includes(path) ||
+      ].includes(path);
+    if (
+      !shouldLoadHeaderModules ||
       websiteConfigStatus !== "succeeded" ||
       !websiteInfo?.companyId ||
       !websiteInfo?.branchId
@@ -1995,7 +2158,6 @@ export default function App() {
   }, [path, searchWithDevice, qrContext, websiteConfigStatus, websiteInfo?.companyId, websiteInfo?.branchId, dispatch]);
 
   useEffect(() => {
-    const urlModuleId = new URLSearchParams(searchWithDevice).get("moduleId");
     let overrides = null;
     const cardModuleNameByPath = {
       "/playstation": "Playstation",
@@ -2016,7 +2178,7 @@ export default function App() {
         console.error(`Active ${cardModuleName} module was not found in header modules.`);
         return undefined;
       }
-      overrides = { moduleId: urlModuleId || moduleId };
+      overrides = { moduleId };
     }
     if (
       !overrides ||
@@ -2112,6 +2274,7 @@ export default function App() {
 
     orderedHeaders.forEach((header) => {
       if (!header.headerCode) return;
+      if (header.headerCode.toUpperCase() === "PRIMARY_NAVIGATION") return;
       const config = sectionConfigs[header.headerCode] || { kind: "service" };
       let section = config.selector ? root.querySelector(config.selector) : null;
       if (!section) {
@@ -2161,14 +2324,31 @@ export default function App() {
         let card = template && !usedTemplates.has(template)
           ? template
           : template?.cloneNode(true) || document.createElement("div");
-        if (key === "playstation") {
+        const contentType = getModuleContentType(module.moduleType);
+        const existingHref = card.tagName === "A" ? card.getAttribute("href") : "";
+        const hasStaticPage = Boolean(getStaticModulePath(moduleName));
+        const isLiveSportsModule = key === "live sports";
+        const isCateringModule = key === "catering";
+        const shouldOpenModulePage =
+          isLiveSportsModule ||
+          isCateringModule ||
+          hasStaticPage ||
+          contentType !== "detail" ||
+          !template ||
+          !existingHref;
+        if (shouldOpenModulePage) {
           if (card.tagName !== "A") {
             const link = document.createElement("a");
             link.className = card.className;
             link.replaceChildren(...card.childNodes);
             card = link;
           }
-          card.href = `/playstation${searchWithDevice === "?" ? "" : searchWithDevice}`;
+          card.href = isLiveSportsModule
+            ? liveSportsUrl
+            : isCateringModule
+             ? module.url || `${websiteHomeUrl.replace(/\/+$/, "")}/catering`
+             : buildModulePageHref(module, searchWithDevice);
+          card.removeAttribute("target");
         }
         if (template) usedTemplates.add(template);
         card.classList.add(kind === "social" ? "lounge-social__item" : "lounge-card");
@@ -2222,7 +2402,7 @@ export default function App() {
     });
 
     return undefined;
-  }, [path, searchWithDevice, headerModulesState]);
+  }, [path, searchWithDevice, headerModulesState, liveSportsUrl, websiteHomeUrl]);
 
   useEffect(() => {
     if (path !== "/menu") return;
@@ -2232,7 +2412,6 @@ export default function App() {
     if (canRedirect) window.location.replace(buildMenuUrl(searchWithDevice, qrContext, "/", deviceId, menuAppUrl));
   }, [path, searchWithDevice, location.search, qrContext, qrContextStatus, qrContextBlocked, deviceId, menuAppUrl]);
 
-  const hasWebsiteConfig = websiteConfigDomain === websiteDomain;
   if (qrContextBlocked) {
     return (
       <div className="lounge-page lounge-page--redirect" role="alert">
@@ -2254,20 +2433,6 @@ export default function App() {
     );
   }
 
-  if (path === "/call-waiter") {
-    return (
-      <CallWaiterPage
-        siteName={siteName}
-        logoUrl={logoUrl}
-        companyId={waiterContext.companyId}
-        branchId={waiterContext.branchId}
-        tableId={waiterContext.tableId}
-        tableNumber={waiterContext.tableNumber}
-        homeHref={`/${searchWithDevice}`}
-      />
-    );
-  }
-
   if (!hasWebsiteConfig || websiteConfigStatus === "loading") {
     return (
       <div className="lounge-page lounge-page--redirect" role="status" aria-live="polite">
@@ -2285,6 +2450,95 @@ export default function App() {
           Try again
         </button>
       </div>
+    );
+  }
+
+  if (path === "/call-waiter") {
+    const requestContext = getRequestContext(searchWithDevice, qrContext);
+    return (
+      <CallWaiterPage
+        siteName={siteName}
+        logoUrl={logoUrl}
+        companyId={requestContext.companyId || websiteInfo?.companyId || ""}
+        branchId={requestContext.branchId || websiteInfo?.branchId || ""}
+        homeHref={`/${searchWithDevice}`}
+        onContinue={({ specialRequest, reservationTitle, reservationDetails }) =>
+          redirectToReservationPage(
+            searchWithDevice,
+            path,
+            qrContext,
+            deviceId,
+            headerModulesState.items,
+            returningCustomer,
+            menuAppUrl,
+            specialRequest,
+            reservationTitle,
+            reservationDetails,
+          )
+        }
+      />
+    );
+  }
+
+
+
+  if (isDynamicModulePage) {
+    const isLoyaltyModule = /loyalty|reward/i.test(dynamicModuleName);
+    const moduleReservationCategory =
+      dynamicModuleName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_") ||
+      "TABLE_RESERVATION";
+    const bookDynamicModuleItem = (item, itemType) => {
+      const bookingUrl = buildPackageMenuUrl(
+        searchWithDevice,
+        qrContext,
+        {
+          id: item.uidPackageId || item.uidCardId,
+          name: item.name,
+          type: itemType,
+          price: item.price,
+          category: moduleReservationCategory,
+          categoryName: dynamicModuleName || "Lounge Module",
+          bookingType: dynamicModuleName || "Lounge Module",
+          moduleId: dynamicModuleId,
+        },
+        deviceId,
+        returningCustomer,
+        menuAppUrl,
+      );
+      window.location.assign(bookingUrl);
+    };
+    const loyaltyRegistrationHref = isLoyaltyModule
+      ? buildPackageMenuUrl(
+          searchWithDevice,
+          qrContext,
+          {
+            id: dynamicModuleId,
+            name: dynamicModuleName || "Loyalty Program",
+            type: "membership",
+            categoryName: dynamicModuleName || "Loyalty Program",
+            category: "MEMBERSHIP",
+            bookingType: "Membership",
+            moduleId: dynamicModuleId,
+          },
+          deviceId,
+          returningCustomer,
+          menuAppUrl,
+        )
+      : "";
+
+    return (
+      <DynamicModulePage
+        contentType={moduleContentType}
+        moduleId={dynamicModuleId}
+        moduleName={dynamicModuleName}
+        moduleSubtitle={dynamicModuleSubtitle}
+        search={searchWithDevice}
+        qrContext={qrContext}
+        siteName={siteName}
+        logoUrl={logoUrl}
+        registrationHref={loyaltyRegistrationHref}
+        onBook={bookDynamicModuleItem}
+      />
     );
   }
 
@@ -2328,20 +2582,15 @@ export default function App() {
         data-timezone={websiteInfo?.timezone || ""}
         dangerouslySetInnerHTML={{ __html: pageHtml }}
       />
-      {path === "/" && (
-        <a className="call-waiter-fab" href={`/call-waiter${searchWithDevice}`}>
-          <span className="call-waiter-fab__icon" aria-hidden="true">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-              <path d="M10 21h4" />
-            </svg>
-          </span>
-          <span>
-            <strong>Call Waiter</strong>
-            <small>Need assistance?</small>
-          </span>
-        </a>
-      )}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <AppContent />
+      <CallWaiterFab />
     </>
   );
 }

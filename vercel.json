@@ -12,6 +12,10 @@
       "source": "/domain-api/QR/qrcontext",
       "destination": "https://restaurents-api.cylsys.com/api/QR/qrcontext"
     },
+    {
+      "source": "/domain-api/QR/checkDevice",
+      "destination": "https://restaurents-api.cylsys.com/api/QR/checkDevice"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

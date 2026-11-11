@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import { createWaiterRequest, fetchTables, fetchWaiterTypes } from "../utils/waiterApi";
-
-function readMessage(payload, fallback) {
-  const message = payload?.message || payload?.Message;
-  return typeof message === "string" && message.trim() ? message : fallback;
-}
+import { fetchWaiterTypes } from "../utils/waiterApi";
 
 function readErrorMessage(error, fallback) {
   return typeof error?.message === "string" && error.message.trim()
@@ -17,62 +12,17 @@ export default function CallWaiterPage({
   logoUrl,
   companyId,
   branchId,
-  tableId,
-  tableNumber,
   homeHref = "/",
+  onContinue,
 }) {
   const [types, setTypes] = useState([]);
   const [typesStatus, setTypesStatus] = useState("loading");
   const [typesError, setTypesError] = useState("");
   const [typesRetry, setTypesRetry] = useState(0);
-  const [tables, setTables] = useState([]);
-  const [tablesStatus, setTablesStatus] = useState("loading");
-  const [tablesError, setTablesError] = useState("");
-  const [tablesRetry, setTablesRetry] = useState(0);
-  const [selectedTableId, setSelectedTableId] = useState(tableId || "");
   const [selectedIds, setSelectedIds] = useState([]);
   const [note, setNote] = useState("");
-  const [submitStatus, setSubmitStatus] = useState("idle");
   const [submitError, setSubmitError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const venueName = siteName || "DESIRE";
-
-  useEffect(() => {
-    if (!branchId) {
-      setTables([]);
-      setTablesStatus("failed");
-      setTablesError("Branch details are missing. Please reopen this page from your table QR code.");
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    setTablesStatus("loading");
-    setTablesError("");
-
-    fetchTables({ branchId, signal: controller.signal })
-      .then((items) => {
-        setTables(items);
-        setTablesStatus("succeeded");
-      })
-      .catch((error) => {
-        if (error.name === "AbortError") return;
-        setTablesError(readErrorMessage(error, "Unable to load tables. Please try again."));
-        setTablesStatus("failed");
-      });
-
-    return () => controller.abort();
-  }, [branchId, tablesRetry]);
-
-  useEffect(() => {
-    if (!tables.length) return;
-    const normalize = (value) => String(value).toLowerCase().replace(/[^a-z0-9]/g, "").replace(/^table/, "");
-    const selected =
-      tables.find((table) => table.id === selectedTableId) ||
-      tables.find((table) =>
-        [table.name, table.code].some((value) => value && normalize(value) === normalize(tableNumber || selectedTableId)),
-      );
-    if (selected && selected.id !== selectedTableId) setSelectedTableId(selected.id);
-  }, [selectedTableId, tableNumber, tables]);
 
   useEffect(() => {
     if (!companyId || !branchId) {
@@ -104,47 +54,42 @@ export default function CallWaiterPage({
       current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
     );
     setSubmitError("");
-    setSuccessMessage("");
   };
 
-  const clearFeedback = () => {
-    setSubmitError("");
-    setSuccessMessage("");
-  };
-
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    if (!selectedTableId) {
-      setSubmitError("Please select your table number.");
-      return;
-    }
-    if (!selectedIds.length) {
+    const selectedReasons = types
+      .filter((type) => selectedIds.includes(type.id))
+      .map((type) => type.name);
+    if (!selectedReasons.length) {
       setSubmitError("Please select at least one reason.");
       return;
     }
-    if (!companyId || !branchId) {
-      setSubmitError("Venue details are missing. Please reopen this page from your table QR code.");
-      return;
-    }
 
-    setSubmitStatus("loading");
-    setSubmitError("");
-    setSuccessMessage("");
+    const reservationTitle = "Call Waiter";
+    const reservationDetails = {
+      id: "call-waiter",
+      name: "Call Waiter",
+      type: "call-waiter",
+      categoryName: "Call Waiter",
+      category: "CALL_WAITER",
+      bookingType: "Call Waiter",
+      reasons: selectedReasons,
+      note: note.trim(),
+      selectedItem: {
+        id: "call-waiter-reason",
+        name: selectedReasons.join(", "),
+      },
+    };
+    const specialRequest = [
+      "Call waiter requested.",
+      `Reason(s): ${selectedReasons.join(", ")}.`,
+      note.trim() ? `Additional note: ${note.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    try {
-      const response = await createWaiterRequest({
-        companyId,
-        branchId,
-        tableId: selectedTableId,
-        requestTypeIds: selectedIds,
-        note: note.trim(),
-      });
-      setSuccessMessage(readMessage(response, "Your request has been sent. Our team will be with you shortly."));
-      setSubmitStatus("succeeded");
-    } catch (error) {
-      setSubmitError(readErrorMessage(error, "Unable to send your request. Please try again."));
-      setSubmitStatus("failed");
-    }
+    onContinue({ specialRequest, reservationTitle, reservationDetails });
   };
 
   return (
@@ -176,7 +121,7 @@ export default function CallWaiterPage({
           <header className="call-waiter-intro">
             <p className="offer-sheet__tagline">Assistance</p>
             <h1>Call Waiter</h1>
-            <p>Select why you need us and your table number. Our team will be with you shortly.</p>
+            <p>Select why you need us. Our team will be with you shortly.</p>
           </header>
 
           <article className="offer-sheet">
@@ -186,50 +131,6 @@ export default function CallWaiterPage({
                 <h2>How can we help?</h2>
                 <span className="lounge-panel__rule" aria-hidden="true" />
               </div>
-
-              <label className="call-waiter-label" htmlFor="waiter-table-number">
-                Table number
-                <select
-                  id="waiter-table-number"
-                  name="tableId"
-                  value={selectedTableId}
-                  disabled={tablesStatus === "loading"}
-                  onChange={(event) => {
-                    setSelectedTableId(event.target.value);
-                    clearFeedback();
-                  }}
-                  required
-                >
-                  <option value="">
-                    {tablesStatus === "loading" ? "Loading tables…" : "Select your table"}
-                  </option>
-                  {selectedTableId && !tables.some((table) => table.id === selectedTableId) && (
-                    <option value={selectedTableId}>{tableNumber || "Current table"}</option>
-                  )}
-                  {tables.map((table) => (
-                    <option key={table.id} value={table.id}>
-                      {table.name}{table.code ? ` (${table.code})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {tablesStatus === "failed" && (
-                <div className="call-waiter-message call-waiter-message--error" role="alert">
-                  <span>{tablesError}</span>
-                  <button
-                    type="button"
-                    className="call-waiter-retry"
-                    onClick={() => setTablesRetry((attempt) => attempt + 1)}
-                  >
-                    Try again
-                  </button>
-                </div>
-              )}
-              {tablesStatus === "succeeded" && tables.length === 0 && (
-                <p className="call-waiter-message call-waiter-message--error" role="alert">
-                  No tables are available for this branch.
-                </p>
-              )}
 
               <fieldset className="call-waiter-reasons">
                 <legend className="call-waiter-label">Select one or more reasons *</legend>
@@ -278,11 +179,7 @@ export default function CallWaiterPage({
                   rows="4"
                   placeholder="Anything else we should know?"
                   value={note}
-                  onChange={(event) => {
-                    setNote(event.target.value);
-                    setSubmitError("");
-                    setSuccessMessage("");
-                  }}
+                  onChange={(event) => setNote(event.target.value)}
                 />
               </label>
 
@@ -291,28 +188,17 @@ export default function CallWaiterPage({
                   {submitError}
                 </p>
               )}
-              {successMessage && (
-                <p className="call-waiter-message call-waiter-message--success" role="status">
-                  {successMessage}
-                </p>
-              )}
 
               <button
                 className="offer-sheet__cta call-waiter-submit"
                 type="submit"
-                disabled={
-                  submitStatus === "loading" ||
-                  tablesStatus !== "succeeded" ||
-                  !selectedTableId ||
-                  typesStatus !== "succeeded" ||
-                  !types.length
-                }
+                disabled={typesStatus !== "succeeded" || types.length === 0}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                   <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
                   <path d="M10 21h4" />
                 </svg>
-                {submitStatus === "loading" ? "Sending request…" : "Call waiter"}
+                Continue to reservation
               </button>
             </form>
           </article>

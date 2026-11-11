@@ -357,6 +357,13 @@ export const checkDevice = createAsyncThunk(
       return rejectWithValue(error.message);
     }
   },
+  {
+    condition: ({ deviceId, companyId }, { getState }) => {
+      const { device } = getState().qrContext;
+      const requestKey = JSON.stringify([deviceId, companyId]);
+      return device.status !== "loading" || device.requestKey !== requestKey;
+    },
+  },
 );
 
 const qrContextSlice = createSlice({
@@ -376,6 +383,8 @@ const qrContextSlice = createSlice({
       data: null,
       status: "idle",
       error: null,
+      requestKey: null,
+      requestId: null,
     },
   },
   reducers: {
@@ -400,17 +409,28 @@ const qrContextSlice = createSlice({
         state.status = "failed";
         state.error = action.payload || action.error.message;
       })
-      .addCase(checkDevice.pending, (state) => {
+      .addCase(checkDevice.pending, (state, action) => {
         state.device.status = "loading";
         state.device.error = null;
+        state.device.requestKey = JSON.stringify([
+          action.meta.arg.deviceId,
+          action.meta.arg.companyId,
+        ]);
+        state.device.requestId = action.meta.requestId;
       })
       .addCase(checkDevice.fulfilled, (state, action) => {
+        if (state.device.requestId !== action.meta.requestId) return;
         state.device.data = action.payload;
         state.device.status = "succeeded";
+        state.device.requestKey = null;
+        state.device.requestId = null;
       })
       .addCase(checkDevice.rejected, (state, action) => {
+        if (state.device.requestId !== action.meta.requestId) return;
         state.device.status = "failed";
         state.device.error = action.payload || action.error.message;
+        state.device.requestKey = null;
+        state.device.requestId = null;
       });
   },
 });
@@ -430,7 +450,13 @@ function extractDevicePayload(state) {
   const device = state.qrContext?.device;
   const raw = device?.data;
   if (!raw || typeof raw !== "object") return null;
-  const inner = raw.data && typeof raw.data === "object" ? raw.data : raw;
+  const layers = [];
+  let current = raw;
+  while (current && typeof current === "object" && !layers.includes(current)) {
+    layers.push(current);
+    current = current.data || current.Data;
+  }
+  const inner = Object.assign({}, ...layers.reverse());
   if (!inner || typeof inner !== "object") return null;
   return {
     ...inner,

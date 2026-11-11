@@ -12,7 +12,7 @@ function banner(appEnv, apiBaseUrl) {
     line,
     `  BUILD ENVIRONMENT : ${tag}`,
     `  API               : ${apiBaseUrl}`,
-    "  API handling      : Redux direct upstream calls",
+    "  API handling      : Redux requests; QR endpoints use same-origin proxy",
     line,
     "",
   ].join("\n");
