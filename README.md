@@ -16,6 +16,8 @@ Each feature has a Redux slice under `src/store/slices/`:
 
 The slices own loading, success, error, duplicate-request guards, and reservation submission state. Feature API helpers in `src/utils/` normalize responses and use the shared client in `src/utils/apiClient.js`. Feature requests use `VITE_API_BASE_URL`. Website and QR context use the same-origin `/domain-api/` proxy. `QR/checkDevice` uses the configured `/api/` Vite proxy in development and `/domain-api/` in production, avoiding browser CORS in both environments.
 
+`src/App.jsx` coordinates routes and venue layout; page module effects live in `src/hooks/`, shared URL and reservation helpers in `src/utils/appHelpers.js`, and the QR call-waiter action in `src/components/CallWaiterFab.jsx`.
+
 ## Development
 
 ```bash
@@ -74,6 +76,8 @@ npm run package
 - `VITE_IMAGE_BASE_URL`: optional image host override.
 - `VITE_MENU_APP_URL`, `VITE_WEBSITE_URL`, `VITE_CATEGORIES_URL`: optional external links.
 - Website API `domainsJson` entries for `APP` and `WEBSITE` determine navigation destinations; the configured menu/website URLs remain fallbacks.
-- Add active modules under an active `PRIMARY_NAVIGATION` header group in `Modules/GetHeadreModules` to show additional links in the lounge drawer. Each module should include its ID, name, type, active status, and optional `url`; without a URL, the app builds an internal module page from its ID and type. Module links retain the current QR/session query context. Fixed built-in links remain available.
+- Dashboard module cards and sections reflect only active modules returned by `Modules/GetHeadreModules`; static cards omitted by the API are hidden, and empty sections (including social sections) are hidden. `MAIN_SECTION` modules are placed into the existing Discover & Dine, Celebrate & Connect, and Entertainment & Services groups; each other active header (including newly added headers and `DINING`) keeps its own section and uses the same dashboard card styling. `ORDER_ONLINE` retains its dedicated partner layout; headers whose name or code identifies social/connect content use the dedicated social layout, even when their label differs from `STAY_CONNECTED`. For returned modules, provided URLs and logos/icons take precedence; matching static cards retain their link or logo when that field is missing. Boolean `isActive`, `bolIsActive`, or `active` fields (and boolean `status`) control visibility; inactive modules are hidden. Modules in `PRIMARY_NAVIGATION` without a URL use an internal page built from their ID and type and retain the current QR/session query context. Fixed built-in links remain available.
+- Header modules refresh automatically every 15 seconds on any app route with company and branch context, including direct visits and QR scans, and immediately when the page regains focus or becomes visible; these requests bypass the browser cache.
+- Unchanged header-module responses leave the rendered DOM untouched. When changed data alters page height, the current scroll position is restored, and users already at the bottom stay at the bottom.
 - PlayStation and Board Games cards are loaded from `CardModule/GetCardModule`, using active `Playstation` and `Board Games` header modules to resolve their module IDs. Keep each card's active status and display order accurate in the admin panel.
 - Game-page copy, instructions, rules, and the featured/game-of-the-week footer panels are currently static page content; making those admin-editable needs a page-content API keyed by page and section, with content, links, active status, and display order.

@@ -94,6 +94,8 @@ export default function CallWaiterPage({
 
   return (
     <div className="lounge-page offer-page call-waiter-page">
+      <a className="skip-link" href="#main">Skip to content</a>
+
       <div className="lounge-bg" aria-hidden="true">
         <div
           className="lounge-bg__image"
@@ -102,7 +104,7 @@ export default function CallWaiterPage({
         <div className="lounge-bg__overlay" />
       </div>
 
-      <div className="lounge-shell bg-games-shell">
+      <div className="lounge-shell bg-games-shell call-waiter-shell">
         <header className="lounge-header">
           <a className="logo lounge-header__logo" href={homeHref} aria-label={`${venueName} home`}>
             {logoUrl && <img className="logo__mark" src={logoUrl} alt="" width="48" height="48" />}
@@ -117,28 +119,30 @@ export default function CallWaiterPage({
           </a>
         </header>
 
-        <main id="main" className="lounge-main bg-games-main">
-          <header className="call-waiter-intro">
-            <p className="offer-sheet__tagline">Assistance</p>
-            <h1>Call Waiter</h1>
-            <p>Select why you need us. Our team will be with you shortly.</p>
-          </header>
+        <main id="main" className="lounge-main bg-games-main call-waiter-main">
+          <section className="lounge-hero call-waiter-hero" aria-labelledby="waiter-heading">
+            <p className="lounge-hero__welcome">Assistance</p>
+            <h1 id="waiter-heading" className="lounge-hero__title">Call Waiter</h1>
+            <p className="lounge-hero__copy">
+              Select why you need us and enter your request. Our team will be with you shortly.
+            </p>
+          </section>
 
-          <article className="offer-sheet">
-            <form className="offer-sheet__panel call-waiter-form" onSubmit={handleSubmit}>
-              <div className="call-waiter-form__divider">
-                <span className="lounge-panel__rule" aria-hidden="true" />
-                <h2>How can we help?</h2>
-                <span className="lounge-panel__rule" aria-hidden="true" />
-              </div>
+          <section className="lounge-panel call-waiter-panel" aria-labelledby="reasons-heading">
+            <div className="lounge-panel__head">
+              <span className="lounge-panel__rule" aria-hidden="true" />
+              <h2 id="reasons-heading">How Can We Help?</h2>
+              <span className="lounge-panel__rule" aria-hidden="true" />
+            </div>
 
+            <form className="call-waiter-form" onSubmit={handleSubmit}>
               <fieldset className="call-waiter-reasons">
-                <legend className="call-waiter-label">Select one or more reasons *</legend>
+                <legend className="call-waiter-reasons__label">Select one or more reasons *</legend>
                 {typesStatus === "loading" && (
-                  <p className="free-wifi-message" role="status">Loading request types…</p>
+                  <p className="call-waiter-note" role="status">Loading request types…</p>
                 )}
                 {typesStatus === "failed" && (
-                  <div className="call-waiter-message call-waiter-message--error" role="alert">
+                  <div className="call-waiter-error call-waiter-message call-waiter-message--error" role="alert">
                     <span>{typesError}</span>
                     <button
                       type="button"
@@ -150,12 +154,12 @@ export default function CallWaiterPage({
                   </div>
                 )}
                 {typesStatus === "succeeded" && types.length === 0 && (
-                  <p className="call-waiter-message call-waiter-message--error" role="alert">
+                  <p className="call-waiter-error call-waiter-message call-waiter-message--error" role="alert">
                     No waiter request types are available right now.
                   </p>
                 )}
                 {typesStatus === "succeeded" && types.map((type) => (
-                  <label className="call-waiter-reason" key={type.id}>
+                  <label className="call-waiter-option" key={type.id}>
                     <input
                       type="checkbox"
                       name="requestTypeIds"
@@ -163,7 +167,8 @@ export default function CallWaiterPage({
                       checked={selectedIds.includes(type.id)}
                       onChange={() => toggleRequestType(type.id)}
                     />
-                    <span className="call-waiter-reason__copy">
+                    <span className="call-waiter-option__box" aria-hidden="true" />
+                    <span className="call-waiter-option__text">
                       <strong>{type.name}</strong>
                       {type.description && <small>{type.description}</small>}
                     </span>
@@ -171,12 +176,13 @@ export default function CallWaiterPage({
                 ))}
               </fieldset>
 
-              <label className="call-waiter-label" htmlFor="waiter-note">
-                Additional note <span>(optional)</span>
+              <label className="call-waiter-field" htmlFor="waiter-note">
+                <span>Additional note <em>(optional)</em></span>
                 <textarea
                   id="waiter-note"
                   name="note"
-                  rows="4"
+                  rows="3"
+                  maxLength="200"
                   placeholder="Anything else we should know?"
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
@@ -184,24 +190,26 @@ export default function CallWaiterPage({
               </label>
 
               {submitError && (
-                <p className="call-waiter-message call-waiter-message--error" role="alert">
+                <p className="call-waiter-error call-waiter-message call-waiter-message--error" role="alert">
                   {submitError}
                 </p>
               )}
 
               <button
-                className="offer-sheet__cta call-waiter-submit"
+                className="call-waiter-submit"
                 type="submit"
                 disabled={typesStatus !== "succeeded" || types.length === 0}
               >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-                  <path d="M10 21h4" />
-                </svg>
+                <span className="call-waiter-submit__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M6 9a6 6 0 0 0 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9" />
+                    <path d="M10 21a2 2 0 0 0 4 0" />
+                  </svg>
+                </span>
                 Continue to reservation
               </button>
             </form>
-          </article>
+          </section>
         </main>
       </div>
     </div>

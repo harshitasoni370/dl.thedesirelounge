@@ -29,6 +29,11 @@ const STATIC_MODULE_PATHS = {
   "exclusive offer": "/exclusive-offers",
   "exclusive offers": "/exclusive-offers",
   "privilege membership": "/privilege-membership",
+  "loyalty & rewards": "/loyalty-program",
+  "loyalty rewards": "/loyalty-program",
+  "loyalty program": "/loyalty-program",
+  "layotly program": "/loyalty-program",
+  "loyalty rewards": "/loyalty-program",
   "sunday brunch": "/sunday-brunch",
 };
 

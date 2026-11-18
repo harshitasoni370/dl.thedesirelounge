@@ -1,5 +1,7 @@
 import { apiRequest } from "./apiClient";
 import { API } from "../config/urls";
+import { getModuleUrl, normalizeModuleUrl } from "./moduleUrl";
+import { normalizeActiveStatus } from "./moduleStatus";
 
 function unwrapHeaders(payload) {
   if (Array.isArray(payload)) return payload;
@@ -40,43 +42,51 @@ function getModuleSubtitle(module) {
   return asText(subtitle).trim();
 }
 
-function asUrl(value) {
-  const url = asText(value).trim();
-  if (!url) return "";
-  if (url.startsWith("/") && !url.startsWith("//")) return url;
+function getNormalizedModuleUrl(module, moduleName) {
+  const value = getModuleUrl(module);
+  if (!value) return "";
 
-  let parsedUrl;
   try {
-    parsedUrl = new URL(url);
+    return normalizeModuleUrl(value);
   } catch (error) {
-    throw new Error("Header module contains an invalid URL.", { cause: error });
+    console.warn(`Ignoring invalid URL for header module "${moduleName}":`, error);
+    return "";
   }
-  if (!["http:", "https:"].includes(parsedUrl.protocol) || parsedUrl.username || parsedUrl.password) {
-    throw new Error("Header module URLs must use HTTP(S) and cannot include credentials.");
-  }
-  return parsedUrl.toString();
 }
 
 export function normalizeHeaderModules(payload) {
   return unwrapHeaders(payload).map((header) => {
     const modules = Array.isArray(header.modules)
-      ? header.modules.map((mod) => ({
-          uidModuleId: asText(
-            mod.uidModuleId || mod.uidHeaderModuleId || mod.moduleId || mod.id,
-          ),
-          moduleName: asText(mod.moduleName || mod.strModuleName || mod.name),
-          moduleType: asText(mod.moduleType || mod.strModuleType || mod.type),
-          subtitle: getModuleSubtitle(mod),
-          url: asUrl(mod.url),
-          icon: asText(mod.icon),
-          status: asText(mod.status, "ACTIVE"),
-        }))
+      ? header.modules.map((mod) => {
+          const moduleName = asText(mod.moduleName || mod.strModuleName || mod.name);
+          return {
+            uidModuleId: asText(
+              mod.uidModuleId || mod.uidHeaderModuleId || mod.moduleId || mod.id,
+            ),
+            moduleName,
+            moduleType: asText(mod.moduleType || mod.strModuleType || mod.type),
+            subtitle: getModuleSubtitle(mod),
+            url: getNormalizedModuleUrl(mod, moduleName),
+            icon: asText(
+              mod.logo ||
+                mod.logoUrl ||
+                mod.strLogo ||
+                mod.strLogoUrl ||
+                mod.icon ||
+                mod.imageUrl ||
+                mod.image ||
+                mod.strImagePath ||
+                mod.thumbnail,
+            ),
+            status: normalizeActiveStatus(mod),
+          };
+        })
       : [];
     return {
       uidHeaderId: asText(header.uidHeaderId || header.headerId || header.id),
       headerName: asText(header.headerName || header.name),
       headerCode: asText(header.headerCode || header.code),
-      status: asText(header.status, "ACTIVE"),
+      status: normalizeActiveStatus(header),
       modules,
     };
   });
@@ -86,6 +96,7 @@ export async function fetchHeaderModules(context = {}, { signal } = {}) {
   const payload = await apiRequest(API.upstream.headerModules, {
     params: { companyId: context.companyId, branchId: context.branchId },
     signal,
+    cache: "no-store",
   });
 
   return normalizeHeaderModules(payload);

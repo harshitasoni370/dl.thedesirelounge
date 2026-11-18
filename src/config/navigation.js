@@ -1,8 +1,5 @@
 import { URLS } from "./urls";
-import {
-  buildModulePageHref,
-  getModuleContentType,
-} from "../utils/moduleRouting";
+import { buildModulePageHref } from "../utils/moduleRouting";
 
 export function getLoungeNavigation({
   menuAppUrl = URLS.app.menuApp,
@@ -44,11 +41,11 @@ export function getLoungeNavigation({
     )
     .map((module) => ({
       label: module.moduleName.trim(),
-      href: module.moduleName.trim().toLowerCase() === "catering"
-        ? module.url || `${websiteHomeUrl.replace(/\/+$/, "")}/catering`
-        : ["card", "package"].includes(getModuleContentType(module.moduleType))
-          ? buildModulePageHref(module, search)
-          : module.url || buildModulePageHref(module, search),
+      direct: Boolean(module.url),
+      href: module.url ||
+        (module.moduleName.trim().toLowerCase() === "catering"
+          ? `${websiteHomeUrl.replace(/\/+$/, "")}/catering`
+          : buildModulePageHref(module, search)),
     }));
 
   return {

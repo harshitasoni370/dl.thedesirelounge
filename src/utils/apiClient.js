@@ -68,7 +68,7 @@ async function readJson(response, url) {
   }
 }
 
-async function rawRequest(url, { method = "GET", params, headers, body, signal, timeoutMs, includeEmptyParams }) {
+async function rawRequest(url, { method = "GET", params, headers, body, signal, timeoutMs, includeEmptyParams, cache }) {
   const fullUrl = `${url}${buildQuery(params, includeEmptyParams)}`;
   const { signal: timedSignal, clear } = withTimeout(signal, timeoutMs || DEFAULT_TIMEOUT_MS);
   try {
@@ -82,6 +82,7 @@ async function rawRequest(url, { method = "GET", params, headers, body, signal, 
       body: body ? JSON.stringify(body) : undefined,
       signal: timedSignal,
       credentials: "omit",
+      cache,
     });
     if (response.status === 204) return null;
     return await readJson(response, fullUrl);

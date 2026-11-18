@@ -30,7 +30,9 @@ const headerModulesSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchHeaderModules.fulfilled, (state, action) => {
-        state.items = action.payload;
+        if (JSON.stringify(state.items) !== JSON.stringify(action.payload)) {
+          state.items = action.payload;
+        }
         state.status = "succeeded";
       })
       .addCase(fetchHeaderModules.rejected, (state, action) => {
