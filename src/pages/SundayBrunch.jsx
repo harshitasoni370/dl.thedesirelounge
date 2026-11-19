@@ -21,7 +21,6 @@ export default function SundayBrunch() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log('Brunch reservation submitted:', formData)
     alert('Reservation request submitted! We will confirm shortly.')
     setFormData({
       name: '',

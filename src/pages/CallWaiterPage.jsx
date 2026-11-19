@@ -23,6 +23,9 @@ export default function CallWaiterPage({
   const [note, setNote] = useState("");
   const [submitError, setSubmitError] = useState("");
   const venueName = siteName || "DESIRE";
+  const isOtherSelected = types.some(
+    (type) => selectedIds.includes(type.id) && type.name.trim().toLowerCase() === "other",
+  );
 
   useEffect(() => {
     if (!companyId || !branchId) {
@@ -63,6 +66,10 @@ export default function CallWaiterPage({
       .map((type) => type.name);
     if (!selectedReasons.length) {
       setSubmitError("Please select at least one reason.");
+      return;
+    }
+    if (isOtherSelected && !note.trim()) {
+      setSubmitError("Please provide additional information for Other.");
       return;
     }
 
@@ -177,15 +184,19 @@ export default function CallWaiterPage({
               </fieldset>
 
               <label className="call-waiter-field" htmlFor="waiter-note">
-                <span>Additional note <em>(optional)</em></span>
+                <span>Additional note <em>({isOtherSelected ? "required for Other" : "optional"})</em></span>
                 <textarea
                   id="waiter-note"
                   name="note"
                   rows="3"
                   maxLength="200"
                   placeholder="Anything else we should know?"
+                  required={isOtherSelected}
                   value={note}
-                  onChange={(event) => setNote(event.target.value)}
+                  onChange={(event) => {
+                    setNote(event.target.value);
+                    setSubmitError("");
+                  }}
                 />
               </label>
 

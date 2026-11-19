@@ -503,7 +503,6 @@ export function usePageModuleEffects({
     headerModulesState.items
   );
 
-  console.log("MEMBERSHIP MODULE CONTEXT:", membershipContext);
 
   dispatch(fetchMembership(membershipContext));
 }, [

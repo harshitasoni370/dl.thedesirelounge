@@ -1,6 +1,9 @@
 import { DEFAULT_COUNTRY_CODE, URLS } from "../config/urls";
 import { getStaticModulePath } from "./moduleRouting";
 import { notifyWhatsApp, buildReservationWhatsAppMessage } from "./whatsapp";
+import { appendQrOriginParams, isQrEntry } from "./qrEntry.js";
+
+export { isQrEntry };
 
 const MENU_APP_URL = URLS.app.menuApp;
 const DEFAULT_CELEBRATION_MODULE_IDS = {
@@ -29,10 +32,18 @@ export function buildMenuUrl(search, qrContext, pathname = "/", deviceId, menuAp
 
   const pick = ["companyId", "branchId", "tableId", "moduleId", "sessionId", "tableSessionId"];
   pick.forEach((key) => {
-    const v = data[key] || inParams.get(key);
+    const v = data[key] || resolveParam(search, key);
     if (v) out.set(key, v);
   });
-  if (data.tableName || inParams.get("tableName")) out.set("tn", data.tableName || inParams.get("tableName"));
+  const tableName =
+    data.tableName ||
+    data.tableNumber ||
+    data.tableNo ||
+    resolveParam(search, "tableName") ||
+    resolveParam(search, "tableNumber") ||
+    resolveParam(search, "tableNo") ||
+    resolveParam(search, "name");
+  if (tableName) out.set("tn", tableName);
   if (inParams.get("category")) out.set("cat", inParams.get("category"));
   if (inParams.get("reservationCategory")) out.set("rc", inParams.get("reservationCategory"));
   if (inParams.get("reservationTitle")) out.set("rt", inParams.get("reservationTitle"));
@@ -103,12 +114,6 @@ export function resolveParam(search, key) {
     if (v !== null && v !== undefined) return v;
   }
   return null;
-}
-
-export function isQrEntry(search) {
-  const params = new URLSearchParams(search);
-  const qrKeys = new Set(["type", "location", "name", "resturant", "restaurant", "tablecode", "tableid", "sessionid", "tablesessionid"]);
-  return Array.from(params.entries()).some(([key, value]) => qrKeys.has(key.toLowerCase()) && Boolean(value));
 }
 
 export function getActiveQrData(search, qrContext) {
@@ -470,6 +475,8 @@ export function openReservation(
     out.set("sid", ctx.tableSessionId);
   }
 
+  appendQrOriginParams(search, out);
+
   if (cat !== "CALL_WAITER") {
     out.set(
       "mid",
@@ -509,8 +516,6 @@ export function openReservation(
   }
 
   appendReturningParams(out, returningCustomer);
-
-  console.log("RESERVE TABLE MODULE ID:", reservationModuleId);
 
   window.location.assign(
     `${menuAppUrl}/checkout?${out.toString()}`

@@ -574,9 +574,10 @@ function AppContent() {
           if (!merged.has(key)) merged.set(key, value);
         });
         if (targetPath === "/checkout") {
-  window.location.replace(targetUrl.toString());
-  return;
-}
+          targetUrl.search = merged.toString();
+          window.location.replace(targetUrl.toString());
+          return;
+        }
         const targetSearch = merged.toString();
 
         if (qrContextStatus === "loading" || qrContextStatus === "idle") {

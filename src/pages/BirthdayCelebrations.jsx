@@ -20,7 +20,6 @@ export default function BirthdayCelebrations() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log('Birthday booking submitted:', formData)
     alert('Thank you! We will contact you soon to confirm your celebration.')
     setFormData({ name: '', email: '', phone: '', date: '', guests: '', message: '' })
   }

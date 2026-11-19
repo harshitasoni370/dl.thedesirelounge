@@ -23,7 +23,6 @@ export default function CorporateBookings() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    console.log('Corporate booking submitted:', formData)
     alert('Thank you! Our corporate team will contact you shortly.')
     setFormData({
       companyName: '',

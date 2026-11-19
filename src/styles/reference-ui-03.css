@@ -1,0 +1,143 @@
+/* ---------- Loyalty rewards page ---------- */
+.offer-page .bg-games-shell.lounge-shell:has(.loyalty-page) {
+  width: min(100%, 840px);
+  --lounge-max: 840px;
+}
+
+.loyalty-page .offer-sheet__panel {
+  gap: 1.2rem;
+  padding: clamp(1.2rem, 4vw, 2rem);
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(201, 162, 75, 0.1), transparent 55%),
+    rgba(8, 8, 8, 0.82);
+}
+
+.loyalty-page .offer-sheet__banner h1 {
+  font-size: clamp(1.05rem, 3.2vw, 1.55rem);
+  letter-spacing: 0.07em;
+}
+
+.loyalty-page .offer-sheet__tagline {
+  font-size: clamp(1.65rem, 4vw, 2.2rem);
+}
+
+.loyalty-page .offer-sheet__copy--lead {
+  max-width: 42rem;
+  margin-inline: auto;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.loyalty-page .offer-sheet__block {
+  gap: 0.8rem;
+}
+
+.loyalty-page .offer-sheet__block h2 {
+  font-size: 0.92rem;
+}
+
+.loyalty-benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.loyalty-benefits li {
+  min-height: 5.2rem;
+  padding: 0.85rem 0.85rem 0.85rem 2rem;
+  border: 1px solid rgba(201, 162, 75, 0.25);
+  border-radius: var(--lounge-radius-sm);
+  background: linear-gradient(135deg, rgba(201, 162, 75, 0.08), rgba(0, 0, 0, 0.28));
+}
+
+.loyalty-benefits li::before {
+  left: 0.85rem;
+  top: 1.1rem;
+}
+
+.loyalty-benefits li strong,
+.loyalty-benefits li span,
+.loyalty-steps li strong,
+.loyalty-steps li span {
+  display: block;
+}
+
+.loyalty-benefits li strong,
+.loyalty-steps li strong {
+  margin-bottom: 0.2rem;
+  color: var(--lounge-gold-bright);
+  font-size: 0.78rem;
+}
+
+.loyalty-benefits li span,
+.loyalty-steps li span {
+  color: #dedbd4;
+  font-size: 0.73rem;
+  line-height: 1.55;
+}
+
+.loyalty-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: loyalty-step;
+}
+
+.loyalty-steps li {
+  position: relative;
+  min-height: 7rem;
+  padding: 2.5rem 0.8rem 0.8rem;
+  border: 1px solid rgba(201, 162, 75, 0.25);
+  border-radius: var(--lounge-radius-sm);
+  background: rgba(0, 0, 0, 0.32);
+  counter-increment: loyalty-step;
+}
+
+.loyalty-steps li::before {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.8rem;
+  color: var(--lounge-gold);
+  content: "0" counter(loyalty-step);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.loyalty-join {
+  align-items: center;
+  padding-top: 0.25rem;
+  text-align: center;
+}
+
+.loyalty-join-cta {
+  width: 100%;
+}
+
+.loyalty-page .offer-sheet__terms {
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(201, 162, 75, 0.2);
+}
+
+@media (max-width: 600px) {
+  .loyalty-benefits {
+    grid-template-columns: 1fr;
+  }
+
+  .loyalty-benefits li {
+    min-height: auto;
+  }
+
+  .loyalty-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .loyalty-steps {
+    grid-template-columns: 1fr;
+  }
+}
